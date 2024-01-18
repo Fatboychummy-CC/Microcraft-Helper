@@ -536,9 +536,17 @@ end
 
 --- Get a text representation of the given crafting plan.
 ---@param plan CraftingPlan The crafting plan to get the text representation of.
+---@param plan_number number? The number of the plan. Defaults to 1.
 ---@return string[] text The text representation of the crafting plan, where each line represents a step in the plan.
-function RecipeHandler.get_plan_as_text(plan)
+function RecipeHandler.get_plan_as_text(plan, plan_number)
   local textual = {} ---@type string[]
+
+  table.insert(textual, "===============")
+  table.insert(textual, ("Crafting plan #%d raw material cost:"):format(plan_number or 1))
+  for item_name, amount in pairs(RecipeHandler.get_raw_material_cost(plan)) do
+    table.insert(textual, ("  %s: %d"):format(item_name, amount))
+  end
+  table.insert(textual, "===============")
 
   local line_formatter = "Use the %s to make %d %s%s from %s."
   local ingredient_formatter = "%d %s%s%s"

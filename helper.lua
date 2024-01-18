@@ -86,15 +86,5 @@ print(plan, err)
 
 if plan then
   local textual = handler.get_plan_as_text(plan)
-
-  table.insert(textual, 1, "===============")
-  table.insert(textual, 2, "Crafting plan #1 raw material cost:")
-  local i = 3
-  for item_name, amount in pairs(handler.get_raw_material_cost(plan)) do
-    table.insert(textual, i, ("  %s: %d"):format(item_name, amount))
-    i = i + 1
-  end
-  table.insert(textual, i, "===============")
-
   require "file_helper".write("recipe.txt", table.concat(textual, "\n"))
 end
