@@ -309,39 +309,6 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
   -- because we may have multiple recipes that use the same ingredient, and we
   -- need to know how much of that ingredient we need in total.
 
-  --- Calculate the needed amount of ingredients required to craft the given item.
-  ---@param node RecipeGraphNode The node to calculate.
-  local function calculate_needed(node)
-    local needed = node.value.needed
-    local crafts = node.value.crafts
-
-    if node.value.recipe then
-      for i = 1, #node.value.recipe.ingredients do
-        local ingredient = node.value.recipe.ingredients[i]
-        local ingredient_name = ingredient.name
-        local ingredient_amount = ingredient.amount
-        local ingredient_node = recipe_graph:find_node(function(n) return n.value.item == ingredient_name end) --[[@as RecipeGraphNode?]]
-
-        if not ingredient_node then
-          -- By this point, a node should have been made for ALL ingredients.
-          -- If we get here, something has gone wrong.
-          return nil, ("No node found for ingredient '%s'"):format(ingredient_name)
-        end
-
-        -- Add the amount of the ingredient needed to the node.
-        ingredient_node.value.needed = ingredient_node.value.needed + (ingredient_amount * crafts)
-
-        if ingredient_node.value.recipe then
-          -- Recalculate the amount of crafts needed to craft that many items.
-          ingredient_node.value.crafts = math.ceil(ingredient_node.value.needed /
-          ingredient_node.value.recipe.result.amount)
-          -- Recalculate the total amount of items that will be outputted.
-          ingredient_node.value.output_count = ingredient_node.value.recipe.result.amount * ingredient_node.value.crafts
-        end
-      end
-    end
-  end
-
   -- now, starting from the root, "climb down" the graph and calculate the
   -- needed amount of each ingredient.
 
@@ -363,8 +330,6 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
       return
     end
 
-    calculate_needed(node)
-
     if not node.value.recipe then
       -- This is an ingredient that we don't have a recipe for, so we can't
       -- build a crafting plan for it. We'll just skip it.
@@ -375,11 +340,23 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
       local ingredient = node.value.recipe.ingredients[i]
       local ingredient_name = ingredient.name
       local ingredient_node = recipe_graph:find_node(function(n) return n.value.item == ingredient_name end) --[[@as RecipeGraphNode?]]
+      local ingredient_amount = ingredient.amount
 
       if not ingredient_node then
         -- By this point, a node should have been made for ALL ingredients.
         -- If we get here, something has gone wrong.
         return nil, ("No node found for ingredient '%s'"):format(ingredient_name)
+      end
+
+      -- Add the amount of the ingredient needed to the node.
+      ingredient_node.value.needed = ingredient_node.value.needed + (ingredient_amount * node.value.crafts)
+
+      if ingredient_node.value.recipe then
+        -- Recalculate the amount of crafts needed to craft that many items.
+        ingredient_node.value.crafts = math.ceil(ingredient_node.value.needed /
+          ingredient_node.value.recipe.result.amount)
+        -- Recalculate the total amount of items that will be outputted.
+        ingredient_node.value.output_count = ingredient_node.value.recipe.result.amount * ingredient_node.value.crafts
       end
 
       climb_down(ingredient_node, current_depth - 1)
