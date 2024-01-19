@@ -21,7 +21,6 @@ local shallow_serialize = require "graph.shallow_serialize"
 --------------------------------------------------------------------------------
 
 ---@class RecipeGraph : Graph
----@field root RecipeGraphNode The root node of the graph.
 ---@field nodes RecipeGraphNode[] A list of all nodes in the graph.
 
 ---@class RecipeGraphNode : GraphNode
@@ -34,6 +33,7 @@ local shallow_serialize = require "graph.shallow_serialize"
 ---@field result RecipeIngredient The resultant item.
 ---@field ingredients RecipeIngredient[] The ingredients required to craft the item.
 ---@field machine string The machine used to craft the item. Defaults to "crafting table".
+---@field enabled boolean Whether or not the recipe is enabled.
 
 ---@class RecipeIngredient A single ingredient in the recipe.
 ---@field name string The name of the ingredient.
@@ -75,6 +75,8 @@ local shallow_serialize = require "graph.shallow_serialize"
 local recipes = {}
 ---@type RecipeLookup
 local lookup = {}
+---@type RecipeGraph
+local recipe_graph = graph.new() --[[@as RecipeGraph]]
 
 --- Create a smaller version of a recipe list with unneeded data removed (things like `fluid = false` can be nil, so it isn't included in the output data).
 ---@return table recipes The ensmallified list of recipes.
@@ -91,6 +93,10 @@ local function ensmallify()
       },
       ingredients = {}
     }
+
+    if recipe.enabled then
+      small_recipe.enabled = true
+    end
 
     if recipe.machine == "crafting table" then
       small_recipe.machine = nil
@@ -196,6 +202,10 @@ function RecipeHandler.parse_recipe(line)
     return nil
   end
 
+  if not recipe.enabled then
+    recipe.enabled = false
+  end
+
   if not recipe.result.amount then
     recipe.result.amount = 1
   end
@@ -262,18 +272,91 @@ function RecipeHandler.save(filename)
   file_helper.write(filename, table.concat(lines, "\n"))
 end
 
---- Build the recipes list into a lookup table of output items (keys) to a list of recipes (values). This is automatically done when loading recipes from a file.
-function RecipeHandler.build_lookup()
+--- Build/rebuild the recipes list into a lookup table of output items (keys) to a list of recipes (values).
+local function build_lookup()
   lookup = {} ---@type RecipeLookup
 
   for i = 1, #recipes do
     local recipe = recipes[i]
 
+    if recipe.enabled then
     if not lookup[recipe.result.name] then
       lookup[recipe.result.name] = {}
     end
 
     table.insert(lookup[recipe.result.name], recipe)
+    end
+  end
+end
+
+--- Set values for needed, crafts, and output count in each node of the graph to zero.
+local function zero_recipe_graph()
+  for _, node in ipairs(recipe_graph.nodes) do
+    node.value.needed = 0
+    node.value.crafts = 0
+    node.value.output_count = 0
+  end
+end
+
+--- Build/rebuild the recipe graph.
+function RecipeHandler.build_recipe_graph()
+  -- For each recipe, we need to create a node in the graph. We also need to
+  -- connect each node to the nodes of the ingredients.
+
+  -- We can do this in two passes.
+  -- 1. Create all the nodes.
+  -- 2. Connect all the nodes.
+
+  build_lookup()
+
+  recipe_graph = graph.new() --[[@as RecipeGraph]]
+
+  -- First pass: Create all the nodes. One node for each recipe for an item.
+  for item_name, item_recipes in pairs(lookup) do
+    for i = 1, #item_recipes do
+      local recipe = item_recipes[i]
+      recipe_graph:add_node({
+        item = item_name,
+        recipe = deep_copy(recipe),
+        needed = 0,
+        crafts = 0,
+        output_count = 0
+      }) --[[@as RecipeGraphNode]]
+    end
+  end
+
+  -- Second pass: Connect all the nodes via their ingredient lists.
+  -- We also create nodes for ingredients that don't have recipes here.
+  for i = 1, #recipe_graph.nodes do
+    local node = recipe_graph.nodes[i]
+    local recipe = node.value.recipe
+
+    if recipe then
+      for j = 1, #recipe.ingredients do
+        local ingredient = recipe.ingredients[j]
+        local ingredient_name = ingredient.name
+        local ingredient_nodes = recipe_graph:find_nodes(function(n) return n.value.item == ingredient_name end) --[[ @as RecipeGraphNode[] ]]
+
+        if #ingredient_nodes == 0 then
+          -- Ingredient doesn't have a recipe, create a node for it.
+          local new_node = recipe_graph:add_node({
+            item = ingredient_name,
+            recipe = nil,
+            needed = 0,
+            crafts = 0,
+            output_count = 0
+          }) --[[@as RecipeGraphNode]]
+
+          -- and connect it
+          new_node:connect(node)
+        else
+          for k = 1, #ingredient_nodes do
+            local ingredient_node = ingredient_nodes[k]
+            ingredient_node:connect(node)
+          end
+        end
+      end
+    end
   end
 end
 
@@ -533,93 +616,6 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
   end
 
   return crafting_plans
-end
-
---- Build a recipe graph for the given item.
---- @param item string The item to build the recipe graph for.
----@return RecipeGraph? crafting_graph The recipe graph for the given item.
----@return string? error The error message if no recipe was found.
-function RecipeHandler.build_recipe_graph(item)
-  if not lookup[item] then
-    return nil, ("No recipe entry for item '%s'"):format(item)
-  end
-
-  local recipe = lookup[item][1]
-
-  if not recipe then
-    return nil, ("No recipe listed for item '%s'"):format(item)
-  end
-
-  -- Build a graph of the recipes.
-  local root_recipe = deep_copy(recipe) --[[@as Recipe]]
-  local root_step = {
-    item = root_recipe.result.name,
-    output_count = 0,
-    needed = 0,
-    crafts = 0,
-    recipe = root_recipe
-  } --[[@as CraftingPlanStep]]
-  -- We start with all values at zero because we don't know how many of the item
-  -- we need yet. We'll calculate that later.
-
-  local crafting_graph = graph.new(root_step) --[[@as RecipeGraph]]
-  local root = crafting_graph.root
-
-  --- Build the graph
-  ---@param node RecipeGraphNode The node to build the graph from.
-  local function build_graph(node)
-    for i = 1, #node.value.recipe.ingredients do
-      local ingredient = node.value.recipe.ingredients[i]
-      local ingredient_name = ingredient.name
-
-      if lookup[ingredient_name] then
-        local ingredient_recipes = lookup[ingredient_name]
-
-        for j = 1, #ingredient_recipes do
-          local ingredient_recipe = ingredient_recipes[j]
-          local ingredient_node = crafting_graph:find_node(function(n) return n.value.item == ingredient_name end) --[[@as RecipeGraphNode?]]
-          if not ingredient_node then
-            -- We haven't added this recipe to the graph yet, so add it.
-            local cloned_recipe = deep_copy(ingredient_recipe) --[[@as Recipe]]
-            local ingredient_step = {
-              item = cloned_recipe.result.name,
-              output_count = 0,
-              needed = 0,
-              crafts = 0,
-              recipe = cloned_recipe
-            } --[[@as CraftingPlanStep]]
-            -- We start with all values at zero because we don't know how many
-            -- of the item we need yet. We'll calculate that later.
-
-            ingredient_node = crafting_graph:add_node(ingredient_step) --[[@as RecipeGraphNode]]
-
-            build_graph(ingredient_node)
-          end
-          node:connect(ingredient_node)
-        end
-      else
-        -- We don't have a recipe for this ingredient, so we'll just add it as
-        -- a node with no recipe.
-        local ingredient_step = {
-          item = ingredient_name,
-          output_count = 0,
-          needed = 0,
-          crafts = 0,
-          recipe = nil
-        } --[[@as CraftingPlanStep]]
-        -- We start with all values at zero because we don't know how many of
-        -- the item we need yet. We'll calculate that later.
-
-        local ingredient_node = crafting_graph:add_node(ingredient_step) --[[@as RecipeGraphNode]]
-
-        node:connect(ingredient_node)
-      end
-    end
-  end
-
-  build_graph(root)
-
-  return crafting_graph
 end
 
 --- Create a new recipe for the given item.
