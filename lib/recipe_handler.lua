@@ -75,7 +75,7 @@ local shallow_serialize = require "graph.shallow_serialize"
 --                  End Lua Language Server Type Definitions                  --
 --------------------------------------------------------------------------------
 
-local _DEBUG = false
+local _DEBUG = true
 local function prints(s, ...)
   if _DEBUG then
     local inputs = table.pack(...)
@@ -582,8 +582,12 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
   ---@param current_graph RecipeGraph The current graph we are stepping through.
   ---@param step_list table The list of steps for the current graph.
   ---@param depth number The current depth of the step.
-  local function step(node, current_graph, step_list, depth, spaces)
+  ---@param spaces integer The number of spaces to indent the debug output.
+  ---@param only_ingredient_index integer? The index of the ingredient to ensure is used. Used when we split a graph into multiple graphs, so we don't get stuck in a loop
+  ---@param only_ingredient_recipe_index integer? The index of the recipe to ensure is used. Used when we split a graph into multiple graphs, so we don't get stuck in a loop
+  local function step(node, current_graph, step_list, depth, spaces, only_ingredient_index, only_ingredient_recipe_index)
     prints(spaces, "Stepping into", node.value.item)
+    prints(spaces, "Only ingredient specified.")
     spaces = spaces + 2
     if depth <= 0 then
       prints(spaces, "Depth exceeded")
@@ -598,6 +602,15 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
       return
     end
 
+    --[[
+      Note for future me: I believe I can get around the issue of having to
+      splitting the graph causing major issues by splitting right here, instead
+      of doing it in the big main loop below.
+      Branch off immediately, and I won't need to undo anything. I will,
+      however, need to figure out how to handle those loops in the branches.
+      But it should be a bit easier.
+    ]]
+
     -- We need to craft the item this many times to get the amount we need.
     local old_crafts = node.value.crafts
     node.value.crafts = math.ceil(node.value.needed / recipe.result.amount)
@@ -610,7 +623,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
     table.insert(step_list, node.value.recipe.random_id)
     prints(spaces, "Inserted:", node.value.recipe.random_id)
 
-    for _, ingredient in ipairs(recipe.ingredients) do
+    for i, ingredient in ipairs(recipe.ingredients) do
       local ingredient_nodes = current_graph:find_nodes(function(n) return n.value.item == ingredient.name end) --[[ @as RecipeGraphNode[] ]]
 
       local n_nodes = #ingredient_nodes
@@ -625,46 +638,60 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
 
       prints(spaces, "Got", n_nodes, "ingredient node(s)")
 
-      for i = 2, n_nodes do
-        local current_node = ingredient_nodes[i]
+      if i == only_ingredient_index then
+        --using the current graph, step through.
+        prints(spaces, "ONLY INGREDIENT INDEX:", only_ingredient_index)
+        prints(spaces, "ONLY INGREDIENT RECIPE INDEX:", only_ingredient_recipe_index)
+
+        -- Calculate ingredients...
+        local current_node = ingredient_nodes[only_ingredient_recipe_index]
         prints(spaces, "Looking at child node:", current_node.value.item)
 
-        -- Clone the graph and insert it into the graph list
-        local new_graph = current_graph:clone() --[[@as RecipeGraph]]
-        graphs[#graphs + 1] = new_graph
+        -- We need this many of the ingredient.
+        prints(spaces, "Old needed:", current_node.value.needed)
+        current_node.value.needed = current_node.value.needed + (ingredient.amount * (node.value.crafts - old_crafts))
+        prints(spaces, "Calculated child (", current_node.value.item , ") needed:", current_node.value.needed)
 
-        -- Grab the new node from the new graph
-        local new_current_node = new_graph:find_node(function(n) return n.value.recipe.random_id == current_node.value.recipe.random_id end) --[[@as RecipeGraphNode]]
+          -- Now, we need to step into the ingredient's ingredients.
+        step(current_node, current_graph, step_list, depth - 1, spaces)
+      else
+        for j = 2, n_nodes do
+          -- Clone the graph and insert it into the graph list
+          local new_graph = current_graph:clone() --[[@as RecipeGraph]]
+          graphs[#graphs + 1] = new_graph
+
+          -- Grab the current node from the new graph
+          local new_current_node = new_graph:find_node(function(n) return n.value.recipe.random_id == node.value.recipe.random_id end) --[[@as RecipeGraphNode]]
+          new_current_node.value.crafts = old_crafts -- undo this as well
+          new_current_node.value.output_count = old_crafts * recipe.result.amount -- and this
+
+          -- Since we will be stepping through a new graph, we need to copy the
+          -- current step list and pass that to the step function.
+
+          -- a surface level copy should be fine, but we'll use deep copy here
+          -- in case I change anything in the future.
+          local new_step_list = deep_copy(step_list)
+          step_lists[#step_lists + 1] = new_step_list
+
+          new_step_list[#new_step_list] = nil -- remove the last entry, since we'll be stepping through a new graph pretending this iteration didn't happen.
+
+          -- Now, let's go.
+          prints(spaces, "###SPLITTING")
+          step(new_current_node, new_graph, new_step_list, depth - 1, spaces + 10, i, j)
+        end
+        -- Then step through the first, using the current graph.
+
+        -- Calculate ingredients...
+        local current_node = ingredient_nodes[1]
+        prints(spaces, "Looking at child node:", current_node.value.item)
 
         -- We need this many of the ingredient.
-        new_current_node.value.needed = new_current_node.value.needed + (ingredient.amount * (node.value.crafts - old_crafts))
-        prints(spaces, "Calculated child (", new_current_node.value.item , ") needed:", new_current_node.value.needed)
+        current_node.value.needed = current_node.value.needed + (ingredient.amount * (node.value.crafts - old_crafts))
+        prints(spaces, "Calculated child (", current_node.value.item , ") needed:", current_node.value.needed)
 
-
-        -- Since we will be stepping through a new graph, we need to copy the
-        -- current step list and pass that to the step function.
-
-        -- a surface level copy should be fine, but we'll use deep copy here
-        -- in case I change anything in the future.
-        local new_step_list = deep_copy(step_list)
-        step_lists[#step_lists + 1] = new_step_list
-
-        -- Now, we need to step into the ingredient's ingredients.
-        prints(spaces, "###SPLITTING")
-        step(new_current_node, new_graph, new_step_list, depth - 1, spaces)
+          -- Now, we need to step into the ingredient's ingredients.
+        step(current_node, current_graph, step_list, depth - 1, spaces)
       end
-      -- Then step through the first, using the current graph.
-
-      -- Calculate ingredients...
-      local current_node = ingredient_nodes[1]
-      prints(spaces, "Looking at child node:", current_node.value.item)
-
-      -- We need this many of the ingredient.
-      current_node.value.needed = current_node.value.needed + (ingredient.amount * (node.value.crafts - old_crafts))
-      prints(spaces, "Calculated child (", current_node.value.item , ") needed:", current_node.value.needed)
-
-      -- Now, we need to step into the ingredient's ingredients.
-      step(current_node, current_graph, step_list, depth - 1, spaces)
     end
   end
 
@@ -677,13 +704,14 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
   end
 
   -- Step through each of the initial nodes.
-  for i = 1, #recipe_nodes do
+  local n_nodes = #recipe_nodes
+  for i = 1, n_nodes do
     local step_list = {}
     step_lists[i] = step_list
 
     local node = graphs[i]:find_node(function(n) return n.value.recipe.random_id == recipe_nodes[i].value.recipe.random_id end) --[[@as RecipeGraphNode]]
 
-    prints(0, "Stepping through", node.value.item)
+    prints(0, "Starting through", node.value.item)
     prints(0, "Random id:", node.value.recipe.random_id)
 
     step(
@@ -711,7 +739,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
       return n.value.recipe and n.value.recipe.random_id == step_list[step_i]
     end) --[[@as RecipeGraphNode]]
     if ingredient_node then
-      prints(0, "Yes")
+      prints(0, "Found ingredient node")
       prints(0, "Building plan for", ingredient_node.value.item, "with", #step_list, "steps")
       local recipe = ingredient_node.value.recipe
 
@@ -748,7 +776,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
         recipe = recipe
       })
     else
-      prints(0, "No.")
+      prints(2, "Didn't find ingredient node.")
     end
   end
 
