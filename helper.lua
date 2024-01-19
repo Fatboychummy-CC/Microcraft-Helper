@@ -79,15 +79,32 @@ handler.create_recipe("Wooden Plank", 4, {
   }
 })]]
 
-handler.build_lookup()
+handler.build_recipe_graph()
 
-local plans, err = handler.get_all_recipes("Diamond Pickaxe", 7, 50, 10000)
+if ... then
+  local plans, err = handler.get_all_recipes("Diamond Pickaxe", 7, 50, 10000)
 
-if plans then
-  local fhelper = require "file_helper"
-  fhelper.empty("recipe.txt")
-  for i, plan in ipairs(plans) do
-    local textual = handler.get_plan_as_text(plan, i)
-    fhelper.append("recipe.txt", table.concat(textual, "\n") .. "\n\n")
+  if plans then
+    print("Got", #plans, "plans.")
+    local fhelper = require "file_helper"
+    fhelper.empty("recipe.txt")
+    for i, plan in ipairs(plans) do
+      local textual = handler.get_plan_as_text(plan, i)
+      fhelper.append("recipe.txt", table.concat(textual, "\n") .. "\n\n")
+    end
+  else
+    print("No plans:", err)
+  end
+else
+  local plan, err = handler.get_first_recipe("Diamond Pickaxe", 7, 50)
+
+  if plan then
+    print("Got a plan!")
+    local textual = handler.get_plan_as_text(plan)
+    for _, line in ipairs(textual) do
+      print(line)
+    end
+  else
+    print("No plan:", err)
   end
 end
