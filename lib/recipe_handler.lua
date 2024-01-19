@@ -1,7 +1,17 @@
 --- The RecipeHandler class is used to manage the crafting recipes given to the
 --- program.
 
-local expect = require "cc.expect".expect
+---@alias LuaType
+---| '"nil"'
+---| '"boolean"'
+---| '"number"'
+---| '"string"'
+---| '"table"'
+---| '"function"'
+---| '"thread"'
+---| '"userdata"'
+
+local expect = require "cc.expect".expect --[[@as fun(pos: number, value: any, ...: LuaType)]]
 local file_helper = require "file_helper"
 local graph = require "graph"
 
@@ -243,7 +253,7 @@ function RecipeHandler.save(filename)
 
   for i = 1, #recipes do
     local recipe = recipes[i]
-    local line = textutils.serialize(recipe, {compact = true})
+    local line = textutils.serialize(recipe, { compact = true })
 
     table.insert(lines, line)
   end
@@ -277,7 +287,7 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
   expect(2, amount, "number")
   expect(3, max_depth, "number", "nil")
 
-  local recipe_graph, err = RecipeHandler.build_recipe_graph(item) 
+  local recipe_graph, err = RecipeHandler.build_recipe_graph(item)
 
   if not recipe_graph then
     return nil, err
@@ -323,7 +333,8 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
 
         if ingredient_node.value.recipe then
           -- Recalculate the amount of crafts needed to craft that many items.
-          ingredient_node.value.crafts = math.ceil(ingredient_node.value.needed / ingredient_node.value.recipe.result.amount)
+          ingredient_node.value.crafts = math.ceil(ingredient_node.value.needed /
+          ingredient_node.value.recipe.result.amount)
           -- Recalculate the total amount of items that will be outputted.
           ingredient_node.value.output_count = ingredient_node.value.recipe.result.amount * ingredient_node.value.crafts
         end
@@ -413,6 +424,17 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
   return crafting_plan
 end
 
+--- Get as many recipes as possible for the given item.
+---@param item string The item to get the recipes for.
+---@param amount number The amount of the item to craft.
+---@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipes for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
+---@param max_iterations number? The total maximum number of iterations to perform. For each depth decrement, this value will also decrement. If this value reaches 0, the function will stop searching for more recipes and cancel the current recipe it was building. Defaults to 1.
+---@return CraftingPlan[]? plans The crafting plans for the given item.
+---@return string? error The error message if no recipe was found.
+function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
+  return nil, "Not yet implemented."
+end
+
 --- Build a recipe graph for the given item.
 --- @param item string The item to build the recipe graph for.
 ---@return RecipeGraph? crafting_graph The recipe graph for the given item.
@@ -498,17 +520,6 @@ function RecipeHandler.build_recipe_graph(item)
   build_graph(root)
 
   return crafting_graph
-end
-
---- Get as many recipes as possible for the given item.
----@param item string The item to get the recipes for.
----@param amount number The amount of the item to craft.
----@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipes for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
----@param max_iterations number? The total maximum number of iterations to perform. For each depth decrement, this value will also decrement. If this value reaches 0, the function will stop searching for more recipes and cancel the current recipe it was building. Defaults to 1.
----@return CraftingPlan[]? plans The crafting plans for the given item.
----@return string? error The error message if no recipe was found.
-function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
-  return nil, "Not yet implemented."
 end
 
 --- Create a new recipe for the given item.
