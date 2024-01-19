@@ -21,23 +21,14 @@ local function deep_copy(t)
 end
 
 ---@class Graph
----@field root GraphNode The root node of the graph.
 ---@field nodes GraphNode[] A list of all nodes in the graph.
 local graph = {}
 
 --- Create a new graph.
----@param root_value any The value of the root node.
+---@param ... any The value of the root nodes.
 ---@return Graph
-function graph.new(root_value)
-  local obj = {
-    nodes = {}
-  }
-  local root = graph_node.new(root_value, obj)
-  obj.root = root
-
-  ---@cast obj Graph
-
-  return setmetatable(obj, {__index = graph})
+function graph.new(...)
+  return setmetatable({nodes = {}}, {__index = graph})
 end
 
 --- Add a new node to the graph.
