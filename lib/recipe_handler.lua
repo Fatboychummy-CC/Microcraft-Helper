@@ -52,6 +52,9 @@ local shallow_serialize = require "graph.shallow_serialize"
 ---@field output_count number The amount of items that will be outputted.
 ---@field steps CraftingPlanStep[] The steps to craft the item.
 
+---@class FinalizedCraftingPlan : CraftingPlan A finalized crafting plan, with all the recipes filled in.
+---@field raw_material_cost MaterialCost The cost of the raw materials needed to craft the item.
+
 ---@class CraftingPlanStep A single step in the crafting plan.
 ---@field item string The item to craft.
 ---@field output_count number The amount of items that will be outputted.
@@ -72,7 +75,7 @@ local shallow_serialize = require "graph.shallow_serialize"
 --                  End Lua Language Server Type Definitions                  --
 --------------------------------------------------------------------------------
 
-local _DEBUG = true
+local _DEBUG = false
 local function prints(s, ...)
   if _DEBUG then
     local inputs = table.pack(...)
@@ -384,14 +387,14 @@ local function clean_crafting_plan(plan)
     local step = plan.steps[i]
     if not step then break end
 
-    if seen[step.item] then
+    if seen[step.recipe.random_id] then
       table.remove(plan.steps, i)
 
       -- We removed an entry, so we need to decrement i to land on the same
       -- position again next iteration.
       i = i - 1
     else
-      seen[step.item] = true
+      seen[step.recipe.random_id] = true
     end
   end
 end
@@ -400,7 +403,7 @@ end
 ---@param item string The item to get the recipe for.
 ---@param amount number The amount of the item to craft.
 ---@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipe for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
----@return CraftingPlan? plan The crafting plan for the given item, or nil if no recipe was found.
+---@return FinalizedCraftingPlan? plan The crafting plan for the given item, or nil if no recipe was found.
 ---@return string? error The error message if no recipe was found.
 function RecipeHandler.get_first_recipe(item, amount, max_depth)
   expect(1, item, "string")
@@ -529,6 +532,9 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
   -- Final step: Remove duplicate entries from the crafting plan.
   clean_crafting_plan(crafting_plan)
 
+  -- Finalize the crafting plan by adding raw material costs.
+  crafting_plan.raw_material_cost = RecipeHandler.get_raw_material_cost(crafting_plan)
+
   return crafting_plan
 end
 
@@ -537,7 +543,7 @@ end
 ---@param amount number The amount of the item to craft.
 ---@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipes for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
 ---@param max_iterations number? The total maximum number of iterations to perform. For each depth decrement, this value will also decrement. If this value reaches 0, the function will stop searching for more recipes and cancel the current recipe it was building. Defaults to 100.
----@return CraftingPlan[]? plans The crafting plans for the given item.
+---@return FinalizedCraftingPlan[]? plans The crafting plans for the given item.
 ---@return string? error The error message if no recipe was found.
 function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
   expect(1, item, "string")
@@ -565,8 +571,8 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
   end
 
   for i = 1, #recipe_nodes do
-    print("Recipe node", i, ":", recipe_nodes[i].value.item)
-    print("Recipe node id:", recipe_nodes[i].value.recipe.random_id)
+    prints(0, "Recipe node", i, ":", recipe_nodes[i].value.item)
+    prints(0, "Recipe node id:", recipe_nodes[i].value.recipe.random_id)
   end
 
   -- Now, we step from each recipe node, into its ingredients, and calculate how
@@ -622,7 +628,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
       for i = 2, n_nodes do
         local current_node = ingredient_nodes[i]
         prints(spaces, "Looking at child node:", current_node.value.item)
-        
+
         -- Clone the graph and insert it into the graph list
         local new_graph = current_graph:clone() --[[@as RecipeGraph]]
         graphs[#graphs + 1] = new_graph
@@ -677,8 +683,8 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
 
     local node = graphs[i]:find_node(function(n) return n.value.recipe.random_id == recipe_nodes[i].value.recipe.random_id end) --[[@as RecipeGraphNode]]
 
-    print("Stepping through", node.value.item)
-    print("Random id:", node.value.recipe.random_id)
+    prints(0, "Stepping through", node.value.item)
+    prints(0, "Random id:", node.value.recipe.random_id)
 
     step(
       node,
@@ -705,16 +711,16 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
       return n.value.recipe and n.value.recipe.random_id == step_list[step_i]
     end) --[[@as RecipeGraphNode]]
     if ingredient_node then
-      print("Yes")
-      print("Building plan for", ingredient_node.value.item, "with", #step_list, "steps")
+      prints(0, "Yes")
+      prints(0, "Building plan for", ingredient_node.value.item, "with", #step_list, "steps")
       local recipe = ingredient_node.value.recipe
 
       if depth <= 0 then
-        print("Depth exceeded")
+        prints(0, "Depth exceeded")
         return
       end
       if step_i > #step_list then
-        print("Step index exceeded")
+        prints(0, "Step index exceeded")
         return
       end
 
@@ -742,7 +748,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
         recipe = recipe
       })
     else
-      print("No.")
+      prints(0, "No.")
     end
   end
 
@@ -774,6 +780,34 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
       break
     end
     ]]
+  end
+
+  -- Semi final stage: Remove plans that use two different methods to make the
+  -- same item.
+  for i = #crafting_plans, 1, -1 do
+    local seen = {}
+    local plan = crafting_plans[i]
+    for j = 1, #plan.steps do
+      local step = plan.steps[j]
+      if seen[step.item] then
+        -- This plan uses two different methods to make the same item, so
+        -- remove it.
+        table.remove(crafting_plans, i)
+        break
+      else
+        seen[step.item] = true
+      end
+    end
+  end
+
+  -- Absolute final state: Sort the crafting plans by the least raw material
+  -- cost
+
+  -- First, we need to get the raw material cost for each plan.
+  ---@cast crafting_plans FinalizedCraftingPlan[]
+  for i = 1, #crafting_plans do
+    local plan = crafting_plans[i]
+    plan.raw_material_cost = RecipeHandler.get_raw_material_cost(plan)
   end
 
   return crafting_plans
