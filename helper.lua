@@ -81,10 +81,13 @@ handler.create_recipe("Wooden Plank", 4, {
 
 handler.build_lookup()
 
-local plan, err = handler.get_first_recipe("Diamond Pickaxe", 7, 10)
-print(plan, err)
+local plans, err = handler.get_all_recipes("Diamond Pickaxe", 7, 50, 10000)
 
-if plan then
-  local textual = handler.get_plan_as_text(plan)
-  require "file_helper".write("recipe.txt", table.concat(textual, "\n"))
+if plans then
+  local fhelper = require "file_helper"
+  fhelper.empty("recipe.txt")
+  for i, plan in ipairs(plans) do
+    local textual = handler.get_plan_as_text(plan, i)
+    fhelper.append("recipe.txt", table.concat(textual, "\n") .. "\n\n")
+  end
 end

@@ -2,6 +2,24 @@
 
 local graph_node = require "graph.node"
 
+--- Deep copy a value
+---@generic T
+---@param t T The value to copy.
+---@return T copy The copy of the value.
+local function deep_copy(t)
+  if type(t) ~= "table" then
+    return t
+  end
+
+  local copy = {}
+
+  for k, v in pairs(t) do
+    copy[k] = deep_copy(v)
+  end
+
+  return copy
+end
+
 ---@class Graph
 ---@field root GraphNode The root node of the graph.
 ---@field nodes GraphNode[] A list of all nodes in the graph.
@@ -48,6 +66,53 @@ function graph:find_node(value)
       end
     end
   end
+end
+
+--- Find all nodes matching a value (or a function that returns true when given the value).
+---@param self Graph The graph to search.
+---@param value any|fun(node:GraphNode):boolean The value to search for.
+---@return GraphNode[]
+function graph:find_nodes(value)
+  local nodes = {}
+
+  if type(value) == "function" then
+    for _, node in ipairs(self.nodes) do
+      if value(node) then
+        nodes[#nodes + 1] = node
+      end
+    end
+  else
+    for _, node in ipairs(self.nodes) do
+      if node.value == value then
+        nodes[#nodes + 1] = node
+      end
+    end
+  end
+
+  return nodes
+end
+
+--- Create a clone of the graph.
+---@param self Graph The graph to clone.
+---@return Graph
+function graph:clone()
+  local new_graph = graph.new(self.root.value)
+
+  local node_map = {}
+
+  -- Pass 1: Create all nodes
+  for _, node in ipairs(self.nodes) do
+    node_map[node] = new_graph:add_node(deep_copy(node.value))
+  end
+
+  -- Pass 2: Connect all nodes
+  for _, node in ipairs(self.nodes) do
+    for _, connection in ipairs(node.connections) do
+      node_map[node]:connect(node_map[connection])
+    end
+  end
+
+  return new_graph
 end
 
 

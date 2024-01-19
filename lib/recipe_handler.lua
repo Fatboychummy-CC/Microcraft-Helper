@@ -14,6 +14,7 @@
 local expect = require "cc.expect".expect --[[@as fun(pos: number, value: any, ...: LuaType)]]
 local file_helper = require "file_helper"
 local graph = require "graph"
+local shallow_serialize = require "graph.shallow_serialize" 
 
 --------------------------------------------------------------------------------
 --                    Lua Language Server Type Definitions                    --
@@ -276,6 +277,30 @@ function RecipeHandler.build_lookup()
   end
 end
 
+--- Clean up a crafting plan by removing duplicate entries. Modifies in-place.
+---@param plan CraftingPlan The crafting plan to clean up.
+local function clean_crafting_plan(plan)
+  local seen = {}
+
+  local i = 0
+  while i <= #plan.steps do
+    i = i + 1
+
+    local step = plan.steps[i]
+    if not step then break end
+
+    if seen[step.item] then
+      table.remove(plan.steps, i)
+
+      -- We removed an entry, so we need to decrement i to land on the same
+      -- position again next iteration.
+      i = i - 1
+    else
+      seen[step.item] = true
+    end
+  end
+end
+
 --- Get the *first* recipe available for the given item. If the item (or ingredients) have multiple recipes, it will use the first and build a crafting plan from that. This method is faster than other methods, but breaks down if there is a loop.
 ---@param item string The item to get the recipe for.
 ---@param amount number The amount of the item to craft.
@@ -378,25 +403,7 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
 
   -- Final step: Remove duplicate entries.
 
-  local seen = {}
-
-  local i = 0
-  while i <= #crafting_plan.steps do
-    i = i + 1
-
-    local step = crafting_plan.steps[i]
-    if not step then break end
-
-    if seen[step.item] then
-      table.remove(crafting_plan.steps, i)
-
-      -- We removed an entry, so we need to decrement i to land on the same
-      -- position again next iteration.
-      i = i - 1
-    else
-      seen[step.item] = true
-    end
-  end
+  clean_crafting_plan(crafting_plan)
 
   return crafting_plan
 end
@@ -405,11 +412,127 @@ end
 ---@param item string The item to get the recipes for.
 ---@param amount number The amount of the item to craft.
 ---@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipes for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
----@param max_iterations number? The total maximum number of iterations to perform. For each depth decrement, this value will also decrement. If this value reaches 0, the function will stop searching for more recipes and cancel the current recipe it was building. Defaults to 1.
+---@param max_iterations number? The total maximum number of iterations to perform. For each depth decrement, this value will also decrement. If this value reaches 0, the function will stop searching for more recipes and cancel the current recipe it was building. Defaults to 100.
 ---@return CraftingPlan[]? plans The crafting plans for the given item.
 ---@return string? error The error message if no recipe was found.
 function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
-  return nil, "Not yet implemented."
+  expect(1, item, "string")
+  expect(2, amount, "number")
+  expect(3, max_depth, "number", "nil")
+  expect(4, max_iterations, "number", "nil")
+  max_depth = max_depth or 1
+  max_iterations = max_iterations or 100
+
+  -- We should be able to do essentially the same thing as get_first_recipe, but
+  -- when a node has multiple recipes, we should branch off and clone the graph.
+  -- We also will want to keep a *list* of graphs. then start with the first.
+
+  local initial_recipe_graph, err = RecipeHandler.build_recipe_graph(item)
+
+  -- output the graph just to ensure things look right.
+  -- file_helper.write("serialized", table.concat(shallow_serialize(initial_recipe_graph, function(node) return node.value.item end), "\n"))
+
+  if not initial_recipe_graph then
+    return nil, err
+  end
+
+  local root = initial_recipe_graph.root
+
+  if not root then
+    return nil, "No root node in crafting graph. Something really weird has happened if you're getting this error."
+  end
+
+  initial_recipe_graph.root.value.needed = amount
+  initial_recipe_graph.root.value.crafts = math.ceil(amount / initial_recipe_graph.root.value.recipe.result.amount)
+  initial_recipe_graph.root.value.output_count = initial_recipe_graph.root.value.recipe.result.amount * initial_recipe_graph.root.value.crafts
+
+  ---@type RecipeGraph[]
+  local graphs = {initial_recipe_graph}
+
+  ---@type CraftingPlan[]
+  local crafting_plans = {
+    {
+      item = root.value.item,
+      output_count = root.value.output_count,
+      steps = {}
+    }
+  }
+
+  --- Build a crafting plan from the given node, graph, and crafting plan.
+  ---@param node RecipeGraphNode The node to start from.
+  ---@param current_graph RecipeGraph The current graph we are working on.
+  ---@param current_crafting_plan CraftingPlan The current crafting plan we are working on.
+  ---@param current_depth number The current depth of the node.
+  local function climb_down(node, current_graph, current_crafting_plan, current_depth)
+    if current_depth == 0 then
+      return
+    end
+
+    if not node.value.recipe then
+      -- This is an ingredient that we don't have a recipe for, so we can't
+      -- build a crafting plan for it. We'll just skip it.
+      return
+    end
+
+    print(node.value.item)
+
+    for i = 1, #node.value.recipe.ingredients do
+      local ingredient = node.value.recipe.ingredients[i]
+      local ingredient_name = ingredient.name
+      local ingredient_nodes = current_graph:find_nodes(function(n) return n.value.item == ingredient_name end) --[[ @as RecipeGraphNode[] ]]
+      local ingredient_amount = ingredient.amount
+
+      if #ingredient_nodes == 0 then
+        -- By this point, a node should have been made for ALL ingredients.
+        -- If we get here, something has gone wrong.
+        return nil, ("No node found for ingredient '%s'"):format(ingredient_name)
+      end
+
+      local n = #ingredient_nodes
+      for j = 1, n do
+        local ingredient_node = ingredient_nodes[j]
+        print(" Ingredient", j, "(", ingredient_node.value.item, ") :", j, n)
+
+        -- If this is not the last ingredient node (and there is more than one
+        -- node), we need to clone the graph and crafting plan, then branch.
+        -- Otherwise, we can just continue as normal and add to the current
+        -- crafting plan.
+        if n ~= 1 and j ~= n then
+          print("  Last")
+          local cloned_graph = current_graph:clone() --[[@as RecipeGraph]]
+          local cloned_crafting_plan = deep_copy(current_crafting_plan) --[[@as CraftingPlan]]
+
+          climb_down(ingredient_node, cloned_graph, cloned_crafting_plan, current_depth - 1)
+
+          table.insert(graphs, cloned_graph)
+          table.insert(crafting_plans, cloned_crafting_plan)
+        else
+          print("  Not last")
+          -- Add the amount of the ingredient needed to the node.
+          ingredient_node.value.needed = ingredient_node.value.needed + (ingredient_amount * node.value.crafts)
+
+          if ingredient_node.value.recipe then
+            -- Recalculate the amount of crafts needed to craft that many items.
+            ingredient_node.value.crafts = math.ceil(ingredient_node.value.needed /
+              ingredient_node.value.recipe.result.amount)
+            -- Recalculate the total amount of items that will be outputted.
+            ingredient_node.value.output_count = ingredient_node.value.recipe.result.amount * ingredient_node.value.crafts
+          end
+
+          climb_down(ingredient_node, current_graph, current_crafting_plan, current_depth - 1)
+        end
+      end
+    end
+  end
+
+  climb_down(root, initial_recipe_graph, crafting_plans[1], max_depth)
+
+  -- Final step: Remove duplicate entries from each crafting plan.
+  for i = 1, #crafting_plans do
+    clean_crafting_plan(crafting_plans[i])
+  end
+
+  return crafting_plans
 end
 
 --- Build a recipe graph for the given item.
