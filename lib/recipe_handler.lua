@@ -14,7 +14,7 @@
 local expect = require "cc.expect".expect --[[@as fun(pos: number, value: any, ...: LuaType)]]
 local file_helper = require "file_helper"
 local graph = require "graph"
-local shallow_serialize = require "graph.shallow_serialize" 
+local shallow_serialize = require "graph.shallow_serialize"
 
 --------------------------------------------------------------------------------
 --                    Lua Language Server Type Definitions                    --
@@ -71,6 +71,17 @@ local shallow_serialize = require "graph.shallow_serialize"
 --------------------------------------------------------------------------------
 --                  End Lua Language Server Type Definitions                  --
 --------------------------------------------------------------------------------
+
+local _DEBUG = true
+local function prints(s, ...)
+  if _DEBUG then
+    local inputs = table.pack(...)
+    for i = 1, inputs.n do
+      inputs[i] = tostring(inputs[i])
+    end
+    print(("%s"):format((" "):rep(s)) .. table.concat(inputs, " "))
+  end
+end
 
 ---@type RecipeList
 local recipes = {}
@@ -412,8 +423,12 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
   -- Then for that ingredient's ingredients, and so on.
   ---@param node RecipeGraphNode The node to step from.
   ---@param depth number The current depth of the step.
-  local function step(node, depth)
+  ---@param spaces integer The number of spaces to indent the debug output.
+  local function step(node, depth, spaces)
+    prints(spaces, "Stepping into", node.value.item)
+    spaces = spaces + 2
     if depth <= 0 then
+      prints(spaces, "Depth exceeded")
       return
     end
 
@@ -421,17 +436,26 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
 
     if not recipe then
       -- This is a raw material, so we don't need to do anything.
+      prints(spaces, "Raw material.")
       return
     end
 
+    prints(spaces, "Needed:", node.value.needed)
+    local old_crafts = node.value.crafts
     -- We need to craft the item this many times to get the amount we need.
     node.value.crafts = math.ceil(node.value.needed / recipe.result.amount)
+    prints(spaces, "Crafts:", node.value.crafts)
 
     -- This is how many total will be made.
     node.value.output_count = node.value.crafts * recipe.result.amount
+    prints(spaces, "Output count:", node.value.output_count)
 
+
+    spaces = spaces + 2
     for _, ingredient in ipairs(recipe.ingredients) do
       local ingredient_node = recipe_graph:find_node(function(n) return n.value.item == ingredient.name end) --[[@as RecipeGraphNode]]
+
+      prints(spaces, "Looking at:", ingredient.name)
 
       if not ingredient_node then
         -- All ingredients should have nodes by this point
@@ -439,10 +463,12 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
       end
 
       -- We need this many of the ingredient.
-      ingredient_node.value.needed = ingredient_node.value.needed + (ingredient.amount * node.value.crafts)
+      prints(spaces, "Previous needed for", ingredient_node.value.item, ":", ingredient_node.value.needed)
+      ingredient_node.value.needed = ingredient_node.value.needed + (ingredient.amount * (node.value.crafts - old_crafts))
+      prints(spaces, "New needed for", ingredient_node.value.item, ":", ingredient_node.value.needed)
 
       -- Now, we need to step into the ingredient's ingredients.
-      step(ingredient_node, depth - 1)
+      step(ingredient_node, depth - 1, spaces)
     end
 
   end
@@ -451,7 +477,7 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
   recipe_node.value.needed = amount
 
   -- And start stepping through it.
-  step(recipe_node, max_depth)
+  step(recipe_node, max_depth, 0)
 
   -- Now, we need to build the crafting plan from the graph.
   local crafting_plan = {
@@ -543,14 +569,6 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
     print("Recipe node id:", recipe_nodes[i].value.recipe.random_id)
   end
 
-  local function prints(s, ...)
-    local inputs = table.pack(...)
-    for i = 1, inputs.n do
-      inputs[i] = tostring(inputs[i])
-    end
-    print(("%s"):format((" "):rep(s)) .. table.concat(inputs, " "))
-  end
-
   -- Now, we step from each recipe node, into its ingredients, and calculate how
   -- many of each ingredient we need to craft the given amount of the item.
   -- Then for that ingredient's ingredients, and so on.
@@ -575,6 +593,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
     end
 
     -- We need to craft the item this many times to get the amount we need.
+    local old_crafts = node.value.crafts
     node.value.crafts = math.ceil(node.value.needed / recipe.result.amount)
     prints(spaces, "Crafts:", node.value.crafts)
 
@@ -612,7 +631,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
         local new_current_node = new_graph:find_node(function(n) return n.value.recipe.random_id == current_node.value.recipe.random_id end) --[[@as RecipeGraphNode]]
 
         -- We need this many of the ingredient.
-        new_current_node.value.needed = new_current_node.value.needed + (ingredient.amount * node.value.crafts)
+        new_current_node.value.needed = new_current_node.value.needed + (ingredient.amount * (node.value.crafts - old_crafts))
         prints(spaces, "Calculated child (", new_current_node.value.item , ") needed:", new_current_node.value.needed)
 
 
@@ -635,7 +654,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
       prints(spaces, "Looking at child node:", current_node.value.item)
 
       -- We need this many of the ingredient.
-      current_node.value.needed = current_node.value.needed + (ingredient.amount * node.value.crafts)
+      current_node.value.needed = current_node.value.needed + (ingredient.amount * (node.value.crafts - old_crafts))
       prints(spaces, "Calculated child (", current_node.value.item , ") needed:", current_node.value.needed)
 
       -- Now, we need to step into the ingredient's ingredients.
