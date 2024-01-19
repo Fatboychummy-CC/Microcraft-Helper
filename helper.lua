@@ -91,6 +91,11 @@ if ... then
     for i, plan in ipairs(plans) do
       local textual = handler.get_plan_as_text(plan, i)
       fhelper.append("recipe.txt", table.concat(textual, "\n") .. "\n\n")
+
+      for _, line in ipairs(textual) do
+        print(line)
+      end
+      print()
     end
   else
     print("No plans:", err)

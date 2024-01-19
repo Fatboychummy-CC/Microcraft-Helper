@@ -87,7 +87,7 @@ end
 ---@param self Graph The graph to clone.
 ---@return Graph
 function graph:clone()
-  local new_graph = graph.new(self.root.value)
+  local new_graph = graph.new()
 
   local node_map = {}
 

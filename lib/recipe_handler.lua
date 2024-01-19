@@ -34,6 +34,7 @@ local shallow_serialize = require "graph.shallow_serialize"
 ---@field ingredients RecipeIngredient[] The ingredients required to craft the item.
 ---@field machine string The machine used to craft the item. Defaults to "crafting table".
 ---@field enabled boolean Whether or not the recipe is enabled.
+---@field random_id number A random ID used to identify the recipe in the graph, mainly used when there are multiple recipes for the same item.
 
 ---@class RecipeIngredient A single ingredient in the recipe.
 ---@field name string The name of the ingredient.
@@ -398,12 +399,6 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
 
   zero_recipe_graph()
 
-  local crafting_plan = {
-    item = item,
-    output_count = 0,
-    steps = {}
-  } --[[@as CraftingPlan]]
-
   -- First, we need to find the recipe for the given item. This should also give
   -- us our node.
   local recipe_node = recipe_graph:find_node(function(n) return n.value.item == item end) --[[@as RecipeGraphNode]]
@@ -459,6 +454,15 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
   step(recipe_node, max_depth)
 
   -- Now, we need to build the crafting plan from the graph.
+  local crafting_plan = {
+    item = item,
+    output_count = 0,
+    steps = {}
+  } --[[@as CraftingPlan]]
+
+  --- Step through the graph to build the crafting plan.
+  ---@param node RecipeGraphNode The node to step from.
+  ---@param depth number The current depth of the step.
   local function build_plan(node, depth)
     if depth <= 0 then
       return
@@ -519,6 +523,239 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
 
   ---@type CraftingPlan[]
   local crafting_plans = {}
+  ---@type RecipeGraph[]
+  local graphs = {}
+
+  --- Used to keep track of what steps the current graph is on, so that later, when we build the crafting plans, we can know how to step down the graph.
+  local step_lists = {}
+
+  zero_recipe_graph()
+
+  -- First, we need to find all possible recipes for our item. This should also
+  -- give us the nodes for each recipe.
+  local recipe_nodes = recipe_graph:find_nodes(function(n) return n.value.item == item end) --[[ @as RecipeGraphNode[] ]]
+  if #recipe_nodes == 0 then
+    return nil, "No recipe found for item: " .. item
+  end
+
+  for i = 1, #recipe_nodes do
+    print("Recipe node", i, ":", recipe_nodes[i].value.item)
+    print("Recipe node id:", recipe_nodes[i].value.recipe.random_id)
+  end
+
+  local function prints(s, ...)
+    local inputs = table.pack(...)
+    for i = 1, inputs.n do
+      inputs[i] = tostring(inputs[i])
+    end
+    print(("%s"):format((" "):rep(s)) .. table.concat(inputs, " "))
+  end
+
+  -- Now, we step from each recipe node, into its ingredients, and calculate how
+  -- many of each ingredient we need to craft the given amount of the item.
+  -- Then for that ingredient's ingredients, and so on.
+  ---@param node RecipeGraphNode The node to step from.
+  ---@param current_graph RecipeGraph The current graph we are stepping through.
+  ---@param step_list table The list of steps for the current graph.
+  ---@param depth number The current depth of the step.
+  local function step(node, current_graph, step_list, depth, spaces)
+    prints(spaces, "Stepping into", node.value.item)
+    spaces = spaces + 2
+    if depth <= 0 then
+      prints(spaces, "Depth exceeded")
+      return
+    end
+
+    local recipe = node.value.recipe
+
+    if not recipe then
+      -- This is a raw material, so we don't need to do anything.
+      prints(spaces, "Raw material.")
+      return
+    end
+
+    -- We need to craft the item this many times to get the amount we need.
+    node.value.crafts = math.ceil(node.value.needed / recipe.result.amount)
+    prints(spaces, "Crafts:", node.value.crafts)
+
+    -- This is how many total will be made.
+    node.value.output_count = node.value.crafts * recipe.result.amount
+    prints(spaces, "Output count:", node.value.output_count)
+
+    table.insert(step_list, node.value.recipe.random_id)
+    prints(spaces, "Inserted:", node.value.recipe.random_id)
+
+    for _, ingredient in ipairs(recipe.ingredients) do
+      local ingredient_nodes = current_graph:find_nodes(function(n) return n.value.item == ingredient.name end) --[[ @as RecipeGraphNode[] ]]
+
+      local n_nodes = #ingredient_nodes
+      if n_nodes == 0 then
+        -- All ingredients should have nodes by this point
+        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient.name))
+      end
+
+      -- for each ingredient node, split off a new graph and step through it.
+      -- Unless there is only one, in which case we can just step through the
+      -- current graph.
+
+      prints(spaces, "Got", n_nodes, "ingredient node(s)")
+
+      for i = 2, n_nodes do
+        local current_node = ingredient_nodes[i]
+        prints(spaces, "Looking at child node:", current_node.value.item)
+        
+        -- Clone the graph and insert it into the graph list
+        local new_graph = current_graph:clone() --[[@as RecipeGraph]]
+        graphs[#graphs + 1] = new_graph
+
+        -- Grab the new node from the new graph
+        local new_current_node = new_graph:find_node(function(n) return n.value.recipe.random_id == current_node.value.recipe.random_id end) --[[@as RecipeGraphNode]]
+
+        -- We need this many of the ingredient.
+        new_current_node.value.needed = new_current_node.value.needed + (ingredient.amount * node.value.crafts)
+        prints(spaces, "Calculated child (", new_current_node.value.item , ") needed:", new_current_node.value.needed)
+
+
+        -- Since we will be stepping through a new graph, we need to copy the
+        -- current step list and pass that to the step function.
+
+        -- a surface level copy should be fine, but we'll use deep copy here
+        -- in case I change anything in the future.
+        local new_step_list = deep_copy(step_list)
+        step_lists[#step_lists + 1] = new_step_list
+
+        -- Now, we need to step into the ingredient's ingredients.
+        prints(spaces, "###SPLITTING")
+        step(new_current_node, new_graph, new_step_list, depth - 1, spaces)
+      end
+      -- Then step through the first, using the current graph.
+
+      -- Calculate ingredients...
+      local current_node = ingredient_nodes[1]
+      prints(spaces, "Looking at child node:", current_node.value.item)
+
+      -- We need this many of the ingredient.
+      current_node.value.needed = current_node.value.needed + (ingredient.amount * node.value.crafts)
+      prints(spaces, "Calculated child (", current_node.value.item , ") needed:", current_node.value.needed)
+
+      -- Now, we need to step into the ingredient's ingredients.
+      step(current_node, current_graph, step_list, depth - 1, spaces)
+    end
+  end
+
+  -- Initialize the first nodes in the graph.
+  for i = 1, #recipe_nodes do
+    local recipe_node = recipe_nodes[i]
+    recipe_node.value.needed = amount
+    graphs[i] = recipe_graph:clone() --[[@as RecipeGraph]]
+    recipe_node.value.needed = 0
+  end
+
+  -- Step through each of the initial nodes.
+  for i = 1, #recipe_nodes do
+    local step_list = {}
+    step_lists[i] = step_list
+
+    local node = graphs[i]:find_node(function(n) return n.value.recipe.random_id == recipe_nodes[i].value.recipe.random_id end) --[[@as RecipeGraphNode]]
+
+    print("Stepping through", node.value.item)
+    print("Random id:", node.value.recipe.random_id)
+
+    step(
+      node,
+      graphs[i],
+      step_list,
+      max_depth,
+      0
+    )
+  end
+
+  -- Now, we need to build the crafting plans from the graphs. There may be more
+  -- graphs than what we started with if other ingredients have multiple
+  -- recipes.
+
+  --- Step through the given graph to build the crafting plan.
+  ---@param crafting_plan CraftingPlan The crafting plan to build.
+  ---@param current_graph RecipeGraph The current graph we are stepping through.
+  ---@param step_list table The list of steps followed for the current graph.
+  ---@param step_i integer The current step in the step list.
+  ---@param depth number The current depth of the step.
+  local function build_plan(crafting_plan, current_graph, step_list, step_i, depth)
+    -- Get the current step's node.
+    local ingredient_node = current_graph:find_node(function(n)
+      return n.value.recipe and n.value.recipe.random_id == step_list[step_i]
+    end) --[[@as RecipeGraphNode]]
+    if ingredient_node then
+      print("Yes")
+      print("Building plan for", ingredient_node.value.item, "with", #step_list, "steps")
+      local recipe = ingredient_node.value.recipe
+
+      if depth <= 0 then
+        print("Depth exceeded")
+        return
+      end
+      if step_i > #step_list then
+        print("Step index exceeded")
+        return
+      end
+
+      if not recipe then
+        -- This is a raw material, so we don't need to do anything.
+        return
+      end
+
+      -- Descend into the next steps first so we build the plan from the bottom up.
+      build_plan(crafting_plan, current_graph, step_list, step_i + 1, depth - 1)
+
+
+      if not ingredient_node then
+        -- All ingredients should have nodes by this point
+        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient_node.value.name))
+      end
+
+      -- Now that we've stepped through the ingredients, add this recipe to the
+      -- crafting plan.
+      table.insert(crafting_plan.steps, {
+        item = ingredient_node.value.item,
+        output_count = ingredient_node.value.output_count,
+        needed = ingredient_node.value.needed,
+        crafts = ingredient_node.value.crafts,
+        recipe = recipe
+      })
+    else
+      print("No.")
+    end
+  end
+
+  -- Now, actually build the crafting plans.
+  for i = 1, #graphs do
+    local crafting_plan = {
+      item = item,
+      output_count = 0,
+      steps = {}
+    } --[[@as CraftingPlan]]
+
+    build_plan(
+      crafting_plan,
+      graphs[i],
+      step_lists[i],
+      1,
+      max_depth
+    )
+
+    -- Final step: Remove duplicate entries from the crafting plan.
+    clean_crafting_plan(crafting_plan)
+
+    -- Insert the new plan into the list.
+    crafting_plans[#crafting_plans + 1] = crafting_plan
+
+    --[[ ignore this for now
+    max_iterations = max_iterations - 1
+    if max_iterations <= 0 then
+      break
+    end
+    ]]
+  end
 
   return crafting_plans
 end
@@ -539,7 +776,8 @@ function RecipeHandler.create_recipe(item, output_count, ingredients, machine)
     },
     ingredients = ingredients,
     machine = machine or "crafting table",
-    enabled = true
+    enabled = true,
+    random_id = math.random(-999999999, 999999999) -- probably enough, considering this isn't meant to house every recipe ever
   }
 
   table.insert(recipes, recipe)
