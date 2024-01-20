@@ -75,7 +75,7 @@ local shallow_serialize = require "graph.shallow_serialize"
 --                  End Lua Language Server Type Definitions                  --
 --------------------------------------------------------------------------------
 
-local _DEBUG = true
+local _DEBUG = false
 local function prints(s, ...)
   if _DEBUG then
     local inputs = table.pack(...)
@@ -403,13 +403,16 @@ end
 ---@param item string The item to get the recipe for.
 ---@param amount number The amount of the item to craft.
 ---@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipe for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
+---@param recipe_selections table<string, Recipe>? A recipe in this lookup table will be used if crafting the item requires one of the ingredients in the list. This is useful for items which have multiple crafting recipes, as you can override which recipe that ingredient will be made with. Any item that has multiple recipes without a recipe in this list will use the first recipe that can be grabbed.
 ---@return FinalizedCraftingPlan? plan The crafting plan for the given item, or nil if no recipe was found.
 ---@return string? error The error message if no recipe was found.
-function RecipeHandler.get_first_recipe(item, amount, max_depth)
+function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selections)
   expect(1, item, "string")
   expect(2, amount, "number")
   expect(3, max_depth, "number", "nil")
+  expect(4, recipe_selections, "table", "nil")
   max_depth = max_depth or 1
+  recipe_selections = recipe_selections or {}
 
   zero_recipe_graph()
 
@@ -453,10 +456,19 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
     node.value.output_count = node.value.crafts * recipe.result.amount
     prints(spaces, "Output count:", node.value.output_count)
 
-
     spaces = spaces + 2
     for _, ingredient in ipairs(recipe.ingredients) do
-      local ingredient_node = recipe_graph:find_node(function(n) return n.value.item == ingredient.name end) --[[@as RecipeGraphNode]]
+      local ingredient_nodes = recipe_graph:find_nodes(function(n) return n.value.item == ingredient.name end) --[[@as RecipeGraphNode[] ]]
+      local ingredient_node = ingredient_nodes[1]
+
+      -- Check if this ingredient has a recipe selection.
+      local selection = recipe_selections[ingredient.name]
+      if selection then
+        -- We need to use this recipe instead of the others.
+        ingredient_node = recipe_graph:find_node(function(n) return n.value.recipe.random_id == selection.random_id end) --[[@as RecipeGraphNode]]
+      else
+        recipe_selections[ingredient.name] = ingredient_node.value.recipe
+      end
 
       prints(spaces, "Looking at:", ingredient.name)
 
@@ -505,7 +517,15 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
     end
 
     for _, ingredient in ipairs(recipe.ingredients) do
-      local ingredient_node = recipe_graph:find_node(function(n) return n.value.item == ingredient.name end) --[[@as RecipeGraphNode]]
+      local ingredient_nodes = recipe_graph:find_nodes(function(n) return n.value.item == ingredient.name end) --[[@as RecipeGraphNode]]
+      local ingredient_node = ingredient_nodes[1]
+
+      -- Check if this ingredient has a recipe selection.
+      local selection = recipe_selections[ingredient.name]
+      if selection then
+        -- We need to use this recipe instead of the others.
+        ingredient_node = recipe_graph:find_node(function(n) return n.value.recipe.random_id == selection.random_id end) --[[@as RecipeGraphNode]]
+      end
 
       if not ingredient_node then
         -- All ingredients should have nodes by this point
@@ -952,6 +972,13 @@ function RecipeHandler.get_raw_material_cost(plan)
   end
 
   return cost
+end
+
+--- Get the recipes for the given item.
+---@param item string The item to get the recipes for.
+---@return Recipe[]? recipes The recipes for the given item. Nil if nothing.
+function RecipeHandler.get_recipes(item)
+  return lookup[item]
 end
 
 return RecipeHandler

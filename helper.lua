@@ -54,7 +54,7 @@ handler.create_recipe("Stick", 4, {
   }
 })
 
-handler.create_recipe("Wooden Plank", 6, {
+local sawmill_wooden_plank = handler.create_recipe("Wooden Plank", 6, {
   {
     name = "Log",
     amount = 1,
@@ -62,7 +62,7 @@ handler.create_recipe("Wooden Plank", 6, {
   }
 }, "sawmill")
 
-handler.create_recipe("Wooden Plank", 4, {
+local craft_wooden_plank = handler.create_recipe("Wooden Plank", 4, {
   {
     name = "Log",
     amount = 1,
@@ -101,7 +101,12 @@ if ... then
     print("No plans:", err)
   end
 else
-  local plan, err = handler.get_first_recipe("Diamond Pickaxe", 7, 50)
+  local plan, err = handler.get_first_recipe(
+    "Diamond Pickaxe", 
+    7, 
+    50,
+    {["Wooden Plank"] = sawmill_wooden_plank}
+  )
 
   if plan then
     print("Got a plan!")
