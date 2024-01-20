@@ -539,6 +539,7 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth)
 end
 
 --- Get as many recipes as possible for the given item.
+---@deprecated This method is not actually deprecated, but I would like a warning to show when people use it. This method *does not work*, and will error immediately.
 ---@param item string The item to get the recipes for.
 ---@param amount number The amount of the item to craft.
 ---@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipes for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
@@ -552,6 +553,22 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
   expect(4, max_iterations, "number", "nil")
   max_depth = max_depth or 1
   max_iterations = max_iterations or 100
+
+  --[[
+    There are some major problems I do not know how to get around here.
+
+    The main issue however, is that I am unsure how to deal with a recipe having
+    two ingredients that have two different recipes. I can deal with a recipe
+    that a single ingredient that has multiple recipes, but not two ingredients.
+
+    My issue is that I am just not sure of how to implement the branching logic
+    for this.
+
+    For now, I will leave what I have here, but I will need to come back to this
+    later.
+  ]]
+
+  error("Not yet working.", 2)
 
   ---@type CraftingPlan[]
   local crafting_plans = {}
