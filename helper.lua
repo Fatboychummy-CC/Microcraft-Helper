@@ -14,4 +14,3 @@
 
 package.path = package.path .. ";lib/?.lua;lib/?/init.lua"
 local handler = require "lib.recipe_handler"
-
