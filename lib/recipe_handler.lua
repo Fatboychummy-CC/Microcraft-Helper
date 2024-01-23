@@ -86,6 +86,8 @@ local function prints(s, ...)
   end
 end
 
+local SAVE_FILE = "recipes.list"
+
 ---@type RecipeList
 local recipes = {}
 ---@type RecipeLookup
@@ -172,10 +174,9 @@ end
 local RecipeHandler = {}
 
 --- Load the recipes from the given file. WARNING: This wipes the currently loaded recipe list first, then loads the recipes.
----@param filename string The file to load the recipes from.
-function RecipeHandler.load(filename)
+function RecipeHandler.load()
   recipes = {} ---@type RecipeList
-  local lines = file_helper:get_lines(filename)
+  local lines = file_helper:get_lines(SAVE_FILE)
 
   for i = 1, lines.n do
     local line = lines[i]
@@ -273,8 +274,7 @@ function RecipeHandler.insert(recipe)
 end
 
 --- Save the recipes to the given file.
----@param filename string The file to save the recipes to.
-function RecipeHandler.save(filename)
+function RecipeHandler.save()
   local lines = {}
 
   for i = 1, #recipes do
@@ -284,7 +284,7 @@ function RecipeHandler.save(filename)
     table.insert(lines, line)
   end
 
-  file_helper:write(filename, table.concat(lines, "\n"))
+  file_helper:write(SAVE_FILE, table.concat(lines, "\n"))
 end
 
 --- Build/rebuild the recipes list into a lookup table of output items (keys) to a list of recipes (values).

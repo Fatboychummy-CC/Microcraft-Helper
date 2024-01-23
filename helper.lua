@@ -15,6 +15,13 @@
 package.path = package.path .. ";lib/?.lua;lib/?/init.lua"
 
 local function main()
+  -- Initial setup: Load everything
+  local machines_common = require "ui.machines.common"
+  machines_common.load()
+
+  local recipe_handler = require "recipe_handler"
+  recipe_handler.load()
+
   --- Run the specified menu.
   ---@param name string The name of the menu to run.
   local function run_menu(name)

@@ -6,17 +6,19 @@ local common = {
   machine_list = {}
 }
 
+local SAVE_FILE = "machines.lson"
+
 --- Load the list of machine names from the file.
 ---@return table<string> list The list of machines.
-function common.load_machine_list()
-  local list = file_helper:unserialize("machines.list", {})
+function common.load()
+  local list = file_helper:unserialize(SAVE_FILE, {})
   common.machine_list = list
   return list
 end
 
 --- Save the list of machine names to the file.
-function common.save_machine_list()
-  file_helper:write("machines.list", textutils.serialize(common.machine_list))
+function common.save()
+  file_helper:write(SAVE_FILE, textutils.serialize(common.machine_list))
 end
 
 --- Add a machine to the list.
@@ -24,7 +26,7 @@ end
 function common.add_machine(name)
   common.remove_machine(name) -- ensure no duplicates are added.
   table.insert(common.machine_list, name)
-  common.save_machine_list()
+  common.save()
 end
 
 --- Remove a machine from the list.
@@ -35,7 +37,7 @@ function common.remove_machine(name)
       table.remove(common.machine_list, i)
     end
   end
-  common.save_machine_list()
+  common.save()
 end
 
 return common
