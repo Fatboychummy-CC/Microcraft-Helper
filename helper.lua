@@ -13,4 +13,34 @@
 ]]
 
 package.path = package.path .. ";lib/?.lua;lib/?/init.lua"
-local handler = require "lib.recipe_handler"
+local handler = require "recipe_handler"
+
+local PrimeUI = require "PrimeUI_cherrypicked"
+
+local function main()
+  local main_menu = require "ui.main_menu"
+  local recipes_menu = require "ui.recipes_menu"
+  local crafting_menu = require "ui.crafting_menu"
+
+  --- Run the specified menu.
+  ---@param name string The name of the menu to run.
+  local function run_menu(name)
+    if name == "recipes_menu" then
+      recipes_menu(run_menu)
+    elseif name == "crafting_menu" then
+      crafting_menu(run_menu)
+    elseif name == "main_menu" then
+      main_menu(run_menu)
+    else
+      error("Unknown menu: " .. name)
+    end
+  end
+
+  run_menu("main_menu")
+end
+
+local ok, err = pcall(main)
+
+if not ok then
+  printError(err)
+end
