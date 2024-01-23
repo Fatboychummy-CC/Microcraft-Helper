@@ -127,13 +127,6 @@ Then, you will be presented with a crafting plan for that item.
 The crafting plan will show you the total amount of each raw resource you need
 to have, then give you a step-by-step guide on how to craft the item.
 
-### Exit
-
-When you exit the program, it will save all the items and machines you have
-added to the program to a file called `items.json` in the same directory as the
-program. This file can be used to load the items and machines into the program
-when you next run it.
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
