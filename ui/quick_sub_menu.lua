@@ -43,17 +43,21 @@ return function(title, options, go_back, go_back_top, go_back_text)
     PrimeUI.horizontalLine(term.current(), 3, 3, #("Microcraft Helper") + 2)
     PrimeUI.label(term.current(), 3, 5, title)
 
+    -- Set up the textbox (directly below the selection box)
+    local redraw_textbox = PrimeUI.textBox(term.current(), 4, 7 + height + 2, len + 3, th - 7 - height, options[1].description or "")
+
     -- Set up the selection box
     local selected = menus[1]
     PrimeUI.selectionBox(term.current(), 4, 7, len + 3, height, menus, function(sel)
       selected = sel
+      PrimeUI.resolve("done")
+    end, function(sel)
+      redraw_textbox(options[sel] and options[sel].description or "")
     end)
 
     -- Add a border around it
     PrimeUI.borderBox(term.current(), 4, 7, len + 3, height)
 
-    -- When we press enter, stop running
-    PrimeUI.keyAction(keys.enter, "done")
     PrimeUI.run()
 
     -- Run the selected menu, or exit if we're done
