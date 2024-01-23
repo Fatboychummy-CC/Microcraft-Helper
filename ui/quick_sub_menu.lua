@@ -2,6 +2,7 @@ local PrimeUI = require "PrimeUI_cherrypicked"
 
 ---@class MenuOption
 ---@field name string The name of the option.
+---@field description string? The description of the option, if any.
 ---@field action fun() The action to run when the option is selected.
 
 --- Create a menu with a list of options and their actions (with optional go-back button).
@@ -10,20 +11,16 @@ local PrimeUI = require "PrimeUI_cherrypicked"
 ---@param go_back boolean Whether to add a go-back button.
 ---@param go_back_top boolean Whether to put the go-back button at the top. Places at the bottom otherwise.
 ---@param go_back_text string? The text to use for the go-back button. Defaults to "Go Back".
----@param max_height integer? The maximum height of the menu. Defaults to term.getSize() - 8.
----@param max_width integer? The maximum width of the menu. Defaults to term.getSize() - 6.
-return function(title, options, go_back, go_back_top, go_back_text, max_height, max_width)
+return function(title, options, go_back, go_back_top, go_back_text)
   go_back_text = go_back_text or "Go Back"
   local tw, th = term.getSize()
-  max_height = max_height or th - 8
-  max_width = max_width or tw - 6
 
   while true do
     -- The list of possible menus
     local menus = {}
-    local len, height = 0, 0
+    local height = 0
+    local len = tw - 9
     for _, v in pairs(options) do
-      len = math.max(len, #v.name)
       height = height + 1
       table.insert(menus, v.name)
     end
@@ -38,13 +35,7 @@ return function(title, options, go_back, go_back_top, go_back_text, max_height, 
       end
     end
 
-    if height > max_height then
-      height = max_height
-    end
-
-    if len > max_width then
-      len = max_width
-    end
+    if height > 5 then height = 5 end
 
     -- Set up the page.
     PrimeUI.clear()

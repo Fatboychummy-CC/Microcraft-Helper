@@ -8,7 +8,7 @@ return function(run_menu)
     {
       name = "Items",
       action = function()
-        run_menu("items_menu")
+        run_menu("items.menu")
       end
     },
     {
