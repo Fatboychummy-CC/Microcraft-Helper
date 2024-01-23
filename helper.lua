@@ -13,25 +13,22 @@
 ]]
 
 package.path = package.path .. ";lib/?.lua;lib/?/init.lua"
-local handler = require "recipe_handler"
 
 local function main()
-  local main_menu = require "ui.main_menu"
-  local recipes_menu = require "ui.recipes_menu"
-  local crafting_menu = require "ui.crafting_menu"
-
   --- Run the specified menu.
   ---@param name string The name of the menu to run.
   local function run_menu(name)
-    if name == "recipes_menu" then
-      recipes_menu(run_menu)
-    elseif name == "crafting_menu" then
-      crafting_menu(run_menu)
-    elseif name == "main_menu" then
-      main_menu(run_menu)
-    else
-      error("Unknown menu: " .. tostring(name), 2)
+    local ok, value = pcall(require, "ui." .. name) -- efficient_code.exe
+
+    if not ok then
+      error("Failed to load menu: " .. tostring(name) .. ": " .. tostring(value), 2)
     end
+
+    if type(value) ~= "function" then
+      error("Menu " .. tostring(name) .. " is not a function, it is a " .. type(value), 2)
+    end
+
+    value(run_menu) -- Run the menu
   end
 
   print("Main menu time bois")
@@ -41,8 +38,7 @@ end
 
 local ok, err = pcall(main)
 
+print() -- Put the cursor onto the screen with a quick lil print
 if not ok then
-  print("We in here erroring bois")
   printError(err)
-  sleep(3)
 end
