@@ -15,8 +15,6 @@
 package.path = package.path .. ";lib/?.lua;lib/?/init.lua"
 local handler = require "recipe_handler"
 
-local PrimeUI = require "PrimeUI_cherrypicked"
-
 local function main()
   local main_menu = require "ui.main_menu"
   local recipes_menu = require "ui.recipes_menu"
@@ -32,9 +30,11 @@ local function main()
     elseif name == "main_menu" then
       main_menu(run_menu)
     else
-      error("Unknown menu: " .. name)
+      error("Unknown menu: " .. tostring(name), 2)
     end
   end
+
+  print("Main menu time bois")
 
   run_menu("main_menu")
 end
@@ -42,5 +42,7 @@ end
 local ok, err = pcall(main)
 
 if not ok then
+  print("We in here erroring bois")
   printError(err)
+  sleep(3)
 end

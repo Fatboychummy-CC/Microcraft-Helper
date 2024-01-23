@@ -39,14 +39,14 @@ do
     end
 
     --- Sets or clears the window that holds where the cursor should be.
-    ---@param win window|nil The window to set as the active window
+    ---@param win Window|Redirect|nil The window to set as the active window
     function PrimeUI.setCursorWindow(win)
         expect(1, win, "table", "nil")
         restoreCursor = win and win.restoreCursor
     end
 
     --- Gets the absolute position of a coordinate relative to a window.
-    ---@param win window The window to check
+    ---@param win Window|Redirect The window to check
     ---@param x number The relative X position of the point
     ---@param y number The relative Y position of the point
     ---@return number x The absolute X position of the window
@@ -87,7 +87,7 @@ do
 end
 
 --- Creates a text input box.
----@param win window The window to draw on
+---@param win Window|Redirect The window to draw on
 ---@param x number The X position of the left side of the box
 ---@param y number The Y position of the box
 ---@param width number The width/length of the box
@@ -143,7 +143,7 @@ function PrimeUI.inputBox(win, x, y, width, action, fgColor, bgColor, replacemen
 end
 
 --- Creates a list of entries that can each be selected.
----@param win window The window to draw on
+---@param win Window|Redirect The window to draw on
 ---@param x number The X coordinate of the inside of the box
 ---@param y number The Y coordinate of the inside of the box
 ---@param width number The width of the inner box
@@ -238,7 +238,7 @@ function PrimeUI.selectionBox(win, x, y, width, height, entries, action, selectC
 end
 
 --- Draws a line of text at a position.
----@param win window The window to draw on
+---@param win Window|Redirect The window to draw on
 ---@param x number The X position of the left side of the text
 ---@param y number The Y position of the text
 ---@param text string The text to draw
@@ -258,7 +258,7 @@ function PrimeUI.label(win, x, y, text, fgColor, bgColor)
 end
 
 --- Creates a text box that wraps text and can have its text modified later.
----@param win window The parent window of the text box
+---@param win Window|Redirect The parent window of the text box
 ---@param x number The X position of the box
 ---@param y number The Y position of the box
 ---@param width number The width of the box
@@ -279,7 +279,7 @@ function PrimeUI.textBox(win, x, y, width, height, text, fgColor, bgColor)
   -- Create the box window.
   local box = window.create(win, x, y, width, height)
   -- Override box.getSize to make print not scroll.
-  function box.getSize()
+  function box.getSize() ---@diagnostic disable-line
       return width, math.huge
   end
   -- Define a function to redraw with.
@@ -300,7 +300,7 @@ function PrimeUI.textBox(win, x, y, width, height, text, fgColor, bgColor)
 end
 
 --- Adds an action to trigger when a key is pressed.
----@param key key The key to trigger on, from `keys.*`
+---@param key integer The key to trigger on, from `keys.*`
 ---@param action function|string A function to call when clicked, or a string to use as a key for a `run` return event
 function PrimeUI.keyAction(key, action)
   expect(1, key, "number")
@@ -317,7 +317,7 @@ function PrimeUI.keyAction(key, action)
 end
 
 --- Creates a scrollable window, which allows drawing large content in a small area.
----@param win window The parent window of the scroll box
+---@param win Window|Redirect The parent window of the scroll box
 ---@param x number The X position of the box
 ---@param y number The Y position of the box
 ---@param width number The width of the box
@@ -327,7 +327,7 @@ end
 ---@param showScrollIndicators boolean|nil Whether to show arrow indicators on the right side when scrolling is available, which reduces the inner width by 1 (defaults to false)
 ---@param fgColor number|nil The color of scroll indicators (defaults to white)
 ---@param bgColor color|nil The color of the background (defaults to black)
----@return window inner The inner window to draw inside
+---@return Window inner The inner window to draw inside
 function PrimeUI.scrollBox(win, x, y, width, height, innerHeight, allowArrowKeys, showScrollIndicators, fgColor, bgColor)
   expect(1, win, "table")
   expect(2, x, "number")
@@ -393,7 +393,7 @@ function PrimeUI.scrollBox(win, x, y, width, height, innerHeight, allowArrowKeys
 end
 
 --- Creates a progress bar, which can be updated by calling the returned function.
----@param win window The window to draw on
+---@param win Window|Redirect The window to draw on
 ---@param x number The X position of the left side of the bar
 ---@param y number The Y position of the bar
 ---@param width number The width of the bar
@@ -427,7 +427,7 @@ function PrimeUI.progressBar(win, x, y, width, fgColor, bgColor, useShade)
 end
 
 --- Draws a horizontal line at a position with the specified width.
----@param win window The window to draw on
+---@param win Window|Redirect The window to draw on
 ---@param x number The X position of the left side of the line
 ---@param y number The Y position of the line
 ---@param width number The width/length of the line
@@ -448,5 +448,46 @@ function PrimeUI.horizontalLine(win, x, y, width, fgColor, bgColor)
 end
 
 
+--- Draws a thin border around a screen region.
+---@param win Window|Redirect The window to draw on
+---@param x number The X coordinate of the inside of the box
+---@param y number The Y coordinate of the inside of the box
+---@param width number The width of the inner box
+---@param height number The height of the inner box
+---@param fgColor color|nil The color of the border (defaults to white)
+---@param bgColor color|nil The color of the background (defaults to black)
+function PrimeUI.borderBox(win, x, y, width, height, fgColor, bgColor)
+    expect(1, win, "table")
+    expect(2, x, "number")
+    expect(3, y, "number")
+    expect(4, width, "number")
+    expect(5, height, "number")
+    fgColor = expect(6, fgColor, "number", "nil") or colors.white
+    bgColor = expect(7, bgColor, "number", "nil") or colors.black
+    -- Draw the top-left corner & top border.
+    win.setBackgroundColor(bgColor)
+    win.setTextColor(fgColor)
+    win.setCursorPos(x - 1, y - 1)
+    win.write("\x9C" .. ("\x8C"):rep(width))
+    -- Draw the top-right corner.
+    win.setBackgroundColor(fgColor)
+    win.setTextColor(bgColor)
+    win.write("\x93")
+    -- Draw the right border.
+    for i = 1, height do
+        win.setCursorPos(win.getCursorPos() - 1, y + i - 1)
+        win.write("\x95")
+    end
+    -- Draw the left border.
+    win.setBackgroundColor(bgColor)
+    win.setTextColor(fgColor)
+    for i = 1, height do
+        win.setCursorPos(x - 1, y + i - 1)
+        win.write("\x95")
+    end
+    -- Draw the bottom border and corners.
+    win.setCursorPos(x - 1, y + height)
+    win.write("\x8D" .. ("\x8C"):rep(width) .. "\x8E")
+end
 
 return PrimeUI
