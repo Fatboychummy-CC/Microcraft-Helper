@@ -12,7 +12,7 @@
 ---| '"userdata"'
 
 local expect = require "cc.expect".expect --[[@as fun(pos: number, value: any, ...: LuaType)]]
-local file_helper = require "file_helper"
+local file_helper = require "file_helper" :instanced("data")
 local graph = require "graph"
 local shallow_serialize = require "graph.shallow_serialize"
 
@@ -175,7 +175,7 @@ local RecipeHandler = {}
 ---@param filename string The file to load the recipes from.
 function RecipeHandler.load(filename)
   recipes = {} ---@type RecipeList
-  local lines = file_helper.get_lines(filename)
+  local lines = file_helper:get_lines(filename)
 
   for i = 1, lines.n do
     local line = lines[i]
@@ -284,7 +284,7 @@ function RecipeHandler.save(filename)
     table.insert(lines, line)
   end
 
-  file_helper.write(filename, table.concat(lines, "\n"))
+  file_helper:write(filename, table.concat(lines, "\n"))
 end
 
 --- Build/rebuild the recipes list into a lookup table of output items (keys) to a list of recipes (values).
@@ -979,6 +979,20 @@ end
 ---@return Recipe[]? recipes The recipes for the given item. Nil if nothing.
 function RecipeHandler.get_recipes(item)
   return lookup[item]
+end
+
+--- Get a list of all the items that have recipes.
+---@return string[] items The list of items that have recipes.
+function RecipeHandler.get_items()
+  local items = {} ---@type string[]
+
+  for item_name, _ in pairs(lookup) do
+    table.insert(items, item_name)
+  end
+
+  table.sort(items) -- sort alphabetically
+
+  return items
 end
 
 return RecipeHandler
