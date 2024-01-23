@@ -170,6 +170,32 @@ local function deep_copy(t)
   return copy
 end
 
+--- Build/rebuild the recipes list into a lookup table of output items (keys) to a list of recipes (values).
+local function build_lookup()
+  lookup = {} ---@type RecipeLookup
+
+  for i = 1, #recipes do
+    local recipe = recipes[i]
+
+    if recipe.enabled then
+      if not lookup[recipe.result.name] then
+        lookup[recipe.result.name] = {}
+      end
+
+      table.insert(lookup[recipe.result.name], recipe)
+    end
+  end
+end
+
+--- Set values for needed, crafts, and output count in each node of the graph to zero.
+local function zero_recipe_graph()
+  for _, node in ipairs(recipe_graph.nodes) do
+    node.value.needed = 0
+    node.value.crafts = 0
+    node.value.output_count = 0
+  end
+end
+
 ---@class RecipeHandler
 local RecipeHandler = {}
 
@@ -285,32 +311,6 @@ function RecipeHandler.save()
   end
 
   file_helper:write(SAVE_FILE, table.concat(lines, "\n"))
-end
-
---- Build/rebuild the recipes list into a lookup table of output items (keys) to a list of recipes (values).
-local function build_lookup()
-  lookup = {} ---@type RecipeLookup
-
-  for i = 1, #recipes do
-    local recipe = recipes[i]
-
-    if recipe.enabled then
-      if not lookup[recipe.result.name] then
-        lookup[recipe.result.name] = {}
-      end
-
-      table.insert(lookup[recipe.result.name], recipe)
-    end
-  end
-end
-
---- Set values for needed, crafts, and output count in each node of the graph to zero.
-local function zero_recipe_graph()
-  for _, node in ipairs(recipe_graph.nodes) do
-    node.value.needed = 0
-    node.value.crafts = 0
-    node.value.output_count = 0
-  end
 end
 
 --- Build/rebuild the recipe graph.
