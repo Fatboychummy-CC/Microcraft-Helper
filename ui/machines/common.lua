@@ -22,6 +22,7 @@ end
 --- Add a machine to the list.
 ---@param name string The name of the machine to add.
 function common.add_machine(name)
+  common.remove_machine(name) -- ensure no duplicates are added.
   table.insert(common.machine_list, name)
   common.save_machine_list()
 end
@@ -32,10 +33,9 @@ function common.remove_machine(name)
   for i, v in ipairs(common.machine_list) do
     if v == name then
       table.remove(common.machine_list, i)
-      common.save_machine_list()
-      return
     end
   end
+  common.save_machine_list()
 end
 
 return common
