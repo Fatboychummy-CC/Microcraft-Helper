@@ -19,8 +19,8 @@ local function main()
   local machines_common = require "ui.machines.common"
   machines_common.load()
 
-  local recipe_handler = require "recipe_handler"
-  recipe_handler.load()
+  local items_common = require "ui.items.common"
+  items_common.load()
 
   --- Run the specified menu.
   ---@param name string The name of the menu to run.
