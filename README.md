@@ -47,10 +47,9 @@ When entering the crafting recipe, for each item you will be prompted with the
 following:
 
 1. Does the item exist in the program?
-  * If yes, select the item from the list.
-  * If no, add the item to the program. This is recursive, so you can add items
-    that don't exist yet.
-2. Enter the amount of the item that will be used in the recipe.
+2. If yes, select the item from the list. If no, add the item to the program.
+  This is recursive, so you can add items that don't exist yet.
+3. Enter the amount of the item that will be used in the recipe.
 
 If the item does not have a crafting recipe, it will be treated as a raw
 material, which will get totalled up in the crafting plan.
