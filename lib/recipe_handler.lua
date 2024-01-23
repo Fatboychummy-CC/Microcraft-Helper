@@ -223,7 +223,7 @@ function RecipeHandler.load()
     end
   end
 
-  RecipeHandler.build_lookup()
+  build_lookup()
 end
 
 --- Parse a recipe from a string.
