@@ -14,7 +14,7 @@ return function(run_menu)
     {
       name = "Machines",
       action = function()
-        run_menu("machines_menu")
+        run_menu("machines.menu")
       end
     },
     {
