@@ -118,7 +118,7 @@ to the program. Select the machine you wish to delete, and it will be deleted
 #### Crafting
 
 When entering this menu, you will be prompted to enter the name of the item you
-wish to craft. If the item exists in the program, it will ask you how many of 
+wish to craft. If the item exists in the program, it will ask you how many of
 the item you wish to craft. If the item does not exist in the program, you will
 be prompted to add it.
 
@@ -127,10 +127,15 @@ Then, you will be presented with a crafting plan for that item.
 The crafting plan will show you the total amount of each raw resource you need
 to have, then give you a step-by-step guide on how to craft the item.
 
-## License
+## Licenses
 
 This project is licensed under the [MIT License](LICENSE).
+
+This project uses the following libraries:
+
+* [fzy-lua](lib/fzy-lua) - MIT License
 
 ## Credits
 
 * [PrimeUI](https://github.com/MCJack123/PrimeUI/tree/master) by @MCJack123
+* [fzy_lua](https://github.com/swarn/fzy-lua) by @swarn
