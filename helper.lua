@@ -28,17 +28,15 @@ local function main()
     local ok, value = pcall(require, "ui." .. name) -- efficient_code.exe
 
     if not ok then
-      error("Failed to load menu: " .. tostring(name) .. ": " .. tostring(value), 2)
+      error(("Failed to load menu: %s"):format(name), 2)
     end
 
     if type(value) ~= "function" then
-      error("Menu " .. tostring(name) .. " is not a function, it is a " .. type(value), 2)
+      error(("Menu %s is not a function, it is a %s"):format(name, type(value)), 2)
     end
 
     value(run_menu) -- Run the menu
   end
-
-  print("Main menu time bois")
 
   run_menu("main_menu")
 end
