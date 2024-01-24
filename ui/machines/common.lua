@@ -7,7 +7,12 @@ local file_helper = require "file_helper" :instanced("data")
 ---@field preference_level number The preference level of the machine.
 
 local common = {
-  machine_list = {}
+  machines = {
+    ["Crafting Table"] = {
+      name = "Crafting Table",
+      preference_level = 0
+    }
+  }
 }
 
 local SAVE_FILE = "machines.lson"
@@ -16,13 +21,22 @@ local SAVE_FILE = "machines.lson"
 ---@return table<string, MachineData> list The list of machines.
 function common.load()
   local list = file_helper:unserialize(SAVE_FILE, {})
-  common.machine_list = list
+  common.machines = list
+
+  -- Always ensure the crafting table exists
+  if not common.machines["Crafting Table"] then
+    common.machines["Crafting Table"] = {
+      name = "Crafting Table",
+      preference_level = 0
+    }
+  end
+
   return list
 end
 
 --- Save the list of machine names to the file.
 function common.save()
-  file_helper:serialize(SAVE_FILE, common.machine_list, true)
+  file_helper:serialize(SAVE_FILE, common.machines, true)
 end
 
 --- Add a machine to the list.
@@ -33,7 +47,7 @@ function common.add_machine(name)
     return
   end
 
-  common.machine_list[name] {
+  common.machines[name] {
     name = name,
     preference_level = 0
   }
@@ -48,7 +62,7 @@ function common.remove_machine(name)
     return
   end
 
-  common.machine_list[name] = nil
+  common.machines[name] = nil
   common.save()
 end
 
