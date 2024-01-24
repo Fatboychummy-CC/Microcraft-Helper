@@ -1,4 +1,3 @@
-local PrimeUI = require "PrimeUI_cherrypicked"
 local quick_sub_menu = require "ui.quick_sub_menu"
 
 --- Main menu UI
