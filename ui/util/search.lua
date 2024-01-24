@@ -35,7 +35,7 @@ return function(menu_name, menu_subtitle, initial_list)
       function(sel)
         PrimeUI.resolve("done")
       end, function(sel)
-        -- todo: this
+        selected = sel
     end)
 
     -- Add a seperator between the input box and the results.
@@ -81,10 +81,13 @@ return function(menu_name, menu_subtitle, initial_list)
       return {} -- not sure if this is needed?
     end, current_text)
 
-    local input, box, value = PrimeUI.run()
+    local input, box = PrimeUI.run()
 
-    if input == "inputBox" and box == input_name and value ~= "" then
-      return value
+    if input == "inputBox" and box == input_name
+    or input == "done" then
+      return selected
+    elseif input == "keyAction" and box == "cancel" then
+      return -- cancelled.
     end
   end
 end
