@@ -1,4 +1,3 @@
-local PrimeUI = require "PrimeUI_cherrypicked"
 local machines_common = require "ui.machines.common"
 local get_text = require "ui.util.get_text"
 
