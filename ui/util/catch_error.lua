@@ -23,5 +23,5 @@ return function(f, ...)
     PrimeUI.run()
   end
 
-  return table.unpack(values, 1, values.n)
+  return table.unpack(values, 2, values.n)
 end

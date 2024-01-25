@@ -14,6 +14,13 @@ return function(run_menu)
 
   local machine = search("Microcraft Helper", "Select Machine", machine_names)
   if machine then
-    catch_error(get_machine_details, common.machines[machine])
+    local new_name, new_preference = catch_error(get_machine_details, common.machines[machine])
+    if new_name and new_preference then
+      common.edit_machine(
+        machine,
+        new_name,
+        new_preference
+      )
+    end
   end
 end

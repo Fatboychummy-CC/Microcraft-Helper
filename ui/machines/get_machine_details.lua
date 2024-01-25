@@ -4,6 +4,8 @@ local get_integer = require "ui.util.get_integer"
 
 --- Get information about a machine.
 ---@param machine_data MachineData The machine data to edit.
+---@return string? new_name The new name of the machine.
+---@return integer? new_preference The new preference level of the machine.
 return function(machine_data)
   machine_data = machine_data or {name="", preference_level=0}
   local new_name = get_text("Microcraft Helper", "Enter machine name.", machine_data.name)
@@ -17,9 +19,5 @@ return function(machine_data)
     return
   end
 
-  common.edit_machine(
-    machine_data.name,
-    new_name,
-    new_preference
-  )
+  return new_name, new_preference
 end
