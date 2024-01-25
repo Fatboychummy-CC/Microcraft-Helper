@@ -83,7 +83,7 @@ function common.add_machine(name)
     return
   end
 
-  common.machines[name] {
+  common.machines[name] = {
     name = name,
     preference_level = preference_level
   }
