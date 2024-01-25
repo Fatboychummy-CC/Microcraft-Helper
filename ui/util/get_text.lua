@@ -5,8 +5,9 @@ local PrimeUI = require "PrimeUI_cherrypicked"
 --- Allows you to get text from the user.
 ---@param menu_name string The name of the menu.
 ---@param menu_subtitle string The subtitle of the menu.
+---@param default_text string? The default text to show in the input box.
 ---@return string? text The text the user entered, or nil if the user cancelled.
-return function(menu_name, menu_subtitle)
+return function(menu_name, menu_subtitle, default_text)
   local w = term.getSize()
 
   -- Set up the page.
@@ -24,7 +25,7 @@ return function(menu_name, menu_subtitle)
 
   -- Add the text input box.
   local input_name = "Text Box"
-  PrimeUI.inputBox(term.current(), 4, 7, w - 6, input_name)
+  PrimeUI.inputBox(term.current(), 4, 7, w - 6, input_name, nil, nil, nil, nil, nil, default_text)
 
   local input, box, value = PrimeUI.run()
 
