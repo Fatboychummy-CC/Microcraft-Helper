@@ -16,7 +16,7 @@ return function(run_menu)
   if machine then
     local new_name, new_preference = catch_error(get_machine_details, common.machines[machine])
     if new_name and new_preference then
-      common.edit_machine(
+      catch_error(common.edit_machine,
         machine,
         new_name,
         new_preference

@@ -8,9 +8,9 @@ return function(run_menu)
   local name, preference = catch_error(get_machine_details)
 
   if name and preference then
-    common.add_machine {
+    catch_error(common.add_machine, {
       name = name,
       preference_level = preference
-    }
+    })
   end
 end
