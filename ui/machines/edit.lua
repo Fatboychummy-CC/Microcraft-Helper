@@ -1,7 +1,10 @@
 local common = require "ui.machines.common"
 local search = require "ui.util.search"
+local get_machine_details = require "ui.machines.get_machine_details"
+local catch_error = require "ui.util.catch_error"
 
---- Edit machine menu -> First, search for a machine by its name.
+
+--- Edit machine menu -> Search for a machine by name, then edit the name and preference level.
 ---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
   local machine_names = {}
@@ -11,8 +14,6 @@ return function(run_menu)
 
   local machine = search("Microcraft Helper", "Select Machine", machine_names)
   if machine then
-    print()
-    term.clear()
-    print(("Editing %s"):format(machine))
+    catch_error(get_machine_details, common.machines[machine])
   end
 end
