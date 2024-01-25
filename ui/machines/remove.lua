@@ -8,8 +8,8 @@ local confirmation_menu = require "ui.util.confirmation_menu"
 ---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
   local machine_names = {}
-  for name in pairs(common.machines) do
-    table.insert(machine_names, name)
+  for _, data in pairs(common.machines) do
+    table.insert(machine_names, data.name)
   end
 
   local machine = search("Select machine for removal.", machine_names)

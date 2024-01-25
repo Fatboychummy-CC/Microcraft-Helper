@@ -6,6 +6,8 @@ local file_helper = require "file_helper" :instanced("data")
 ---@field name string The name of the machine.
 ---@field preference_level number The preference level of the machine.
 
+---@class machines-common
+---@field machines table<string, MachineData> A lookup of machine names to their data.
 local common = {
   machines = {
     ["crafting table"] = {
