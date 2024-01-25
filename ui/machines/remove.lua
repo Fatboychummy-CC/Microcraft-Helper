@@ -12,7 +12,7 @@ return function(run_menu)
     table.insert(machine_names, name)
   end
 
-  local machine = search("Microcraft Helper", "Select machine for removal.", machine_names)
+  local machine = search("Select machine for removal.", machine_names)
   if machine then
     if confirmation_menu(("Remove %s?"):format(machine)) then
       catch_error(common.remove_machine, machine)

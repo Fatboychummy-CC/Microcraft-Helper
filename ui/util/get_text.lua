@@ -3,17 +3,16 @@
 local PrimeUI = require "PrimeUI_cherrypicked"
 
 --- Allows you to get text from the user.
----@param menu_name string The name of the menu.
 ---@param menu_subtitle string The subtitle of the menu.
 ---@param default_text string? The default text to show in the input box.
 ---@return string? text The text the user entered, or nil if the user cancelled.
-return function(menu_name, menu_subtitle, default_text)
+return function(menu_subtitle, default_text)
   local w = term.getSize()
 
   -- Set up the page.
   PrimeUI.clear()
-  PrimeUI.label(term.current(), 3, 2, menu_name)
-  PrimeUI.horizontalLine(term.current(), 3, 3, #menu_name + 2)
+  PrimeUI.label(term.current(), 3, 2, "Microcraft Helper")
+  PrimeUI.horizontalLine(term.current(), 3, 3, #("Microcraft Helper") + 2)
   PrimeUI.label(term.current(), 3, 5, menu_subtitle)
 
   -- Draw a box around the input box.

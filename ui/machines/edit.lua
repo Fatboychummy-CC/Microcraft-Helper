@@ -12,7 +12,7 @@ return function(run_menu)
     table.insert(machine_names, name)
   end
 
-  local machine = search("Microcraft Helper", "Select Machine", machine_names)
+  local machine = search("Select Machine", machine_names)
   if machine then
     local new_name, new_preference = catch_error(get_machine_details, common.machines[machine])
     if new_name and new_preference then

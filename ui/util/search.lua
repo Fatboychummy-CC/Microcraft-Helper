@@ -4,11 +4,10 @@ local PrimeUI = require "PrimeUI_cherrypicked"
 local fzy = require "fzy_lua"
 
 --- Allows you to search for something.
----@param menu_name string The name of the menu.
 ---@param menu_subtitle string The subtitle of the menu.
 ---@param initial_list table<integer,string> The initial list of results. If nothing has been entered yet, this will be shown.
 ---@return string? text The text the user entered, or nil if the user cancelled.
-return function(menu_name, menu_subtitle, initial_list)
+return function(menu_subtitle, initial_list)
   local w, h = term.getSize()
   local current_text = ""
   local selected = 1
@@ -18,8 +17,8 @@ return function(menu_name, menu_subtitle, initial_list)
   while true do
     -- Set up the page.
     PrimeUI.clear()
-    PrimeUI.label(term.current(), 3, 2, menu_name)
-    PrimeUI.horizontalLine(term.current(), 3, 3, #menu_name + 2)
+    PrimeUI.label(term.current(), 3, 2, "Microcraft Helper")
+    PrimeUI.horizontalLine(term.current(), 3, 3, #("Microcraft Helper") + 2)
     PrimeUI.label(term.current(), 3, 5, menu_subtitle)
 
     -- Draw a box around the input box.
