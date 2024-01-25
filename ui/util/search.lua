@@ -11,7 +11,7 @@ local fzy = require "fzy_lua"
 return function(menu_name, menu_subtitle, initial_list)
   local w, h = term.getSize()
   local current_text = ""
-  local selected = initial_list[1]
+  local selected = 1
 
   local list = initial_list
 
@@ -28,6 +28,11 @@ return function(menu_name, menu_subtitle, initial_list)
     -- Add a textbox at the bottom of the screen.
     PrimeUI.textBox(term.current(), 4, h - 1, w - 6, 1, "Press END to cancel.")
     PrimeUI.keyAction(keys["end"], "cancel")
+
+    -- Ensure something exists in the list
+    if #list == 0 then
+      list = { "No results found." }
+    end
 
     -- Add a list of results below the input box.
     PrimeUI.selectionBox(term.current(), 4, 9, w - 6, h - 11,
@@ -58,16 +63,18 @@ return function(menu_name, menu_subtitle, initial_list)
         -- Update the list of results
         local matches = fzy.filter(current_text, initial_list)
 
-        -- If there are no matches, show a list with a blank entry.
         if #matches == 0 then
-          matches = {""}
+          matches = {{0, {}, 0}} -- this is the strangest default value I've made yet, it looks like a face
         end
 
         list = {}
         -- Build the list from the match scores.
         for i = 1, #matches do
-          table.insert(list, initial_list[matches[i][1]])
+          table.insert(list, initial_list[matches[i][1]] or "No results found.")
         end
+
+         -- Set the currently selected item to the first item returned
+        selected = matches[1][1]
       end
 
 
@@ -85,7 +92,7 @@ return function(menu_name, menu_subtitle, initial_list)
 
     if input == "inputBox" and box == input_name
     or input == "done" then
-      return selected
+      return initial_list[selected]
     elseif input == "keyAction" and box == "cancel" then
       return -- cancelled.
     end
