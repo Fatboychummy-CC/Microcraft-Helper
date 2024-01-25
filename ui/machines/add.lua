@@ -1,11 +1,16 @@
-local machines_common = require "ui.machines.common"
-local get_text = require "ui.util.get_text"
+local common = require "ui.machines.common"
+local get_machine_details = require "ui.machines.get_machine_details"
+local catch_error = require "ui.util.catch_error"
 
---- Add machine menu -> allows you to add a machine to the list of machines.
----@param run_menu fun(name: string) The function to run another menu (Unneeded in this menu, but added for consistency)
+--- Edit machine menu -> Search for a machine by name, then edit the name and preference level.
+---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
-  local machine_name = get_text("Microcraft Helper", "Enter a name for the machine.")
-  if machine_name then
-    machines_common.add_machine(machine_name)
+  local name, preference = catch_error(get_machine_details)
+
+  if name and preference then
+    common.add_machine {
+      name = name,
+      preference_level = preference
+    }
   end
 end
