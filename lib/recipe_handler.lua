@@ -35,6 +35,7 @@ local util = require "util"
 ---@field ingredients RecipeIngredient[] The ingredients required to craft the item.
 ---@field machine string The machine used to craft the item. Defaults to "crafting table".
 ---@field enabled boolean Whether or not the recipe is enabled.
+---@field preferred boolean Whether or not the recipe is preferred.
 ---@field random_id number A random ID used to identify the recipe in the graph, mainly used when there are multiple recipes for the same item.
 
 ---@class RecipeIngredient A single ingredient in the recipe.
@@ -110,7 +111,8 @@ local function ensmallify()
         fluid = recipe.result.fluid
       },
       ingredients = {},
-      random_id = recipe.random_id
+      random_id = recipe.random_id,
+      preferred = recipe.preferred,
     }
 
     if recipe.enabled then
@@ -874,8 +876,9 @@ end
 ---@param ingredients RecipeIngredient[] The ingredients required to craft the item.
 ---@param machine string? The machine used to craft the item. Defaults to "crafting table".
 ---@param is_fluid boolean? Whether or not the item is a fluid. Defaults to false.
+---@param is_preferred boolean? Whether or not the recipe is preferred. Defaults to false.
 ---@return Recipe recipe The recipe created.
-function RecipeHandler.create_recipe_object(item, output_count, ingredients, machine, is_fluid)
+function RecipeHandler.create_recipe_object(item, output_count, ingredients, machine, is_fluid, is_preferred)
   ---@type Recipe
   return {
     result = {
@@ -886,6 +889,7 @@ function RecipeHandler.create_recipe_object(item, output_count, ingredients, mac
     ingredients = ingredients,
     machine = machine or "crafting table",
     enabled = true,
+    preferred = not not is_preferred,
     random_id = math.random(-999999999, 999999999) -- probably enough, considering this isn't meant to house every recipe ever
   }
 end
@@ -1052,18 +1056,53 @@ end
 --- Edit data for a given recipe
 ---@param name string The name of the recipe to edit.
 ---@param id number The random id of the recipe to edit.
----@param data Recipe The new data for the recipe, random ID will be ignored, so you can use RecipeHandler.create_recipe_object to create the data.
+---@param data table The new data for the recipe, random ID will be ignored, so you can use RecipeHandler.create_recipe_object to create the data. Anything missing will remain unchanged.
 function RecipeHandler.edit_recipe(name, id, data)
   local item_recipes = lookup[name]
 
   for i = 1, #item_recipes do
     local recipe = item_recipes[i]
     if recipe.random_id == id then
-      recipe.result = data.result
-      recipe.ingredients = data.ingredients
-      recipe.machine = data.machine
-      recipe.enabled = data.enabled
+      local preferred = recipe.preferred
+      if data.preferred ~= nil then -- my brain isnt braining right now so this is an if statement instead of an or
+        preferred = data.preferred
+      end
+
+      recipe.result = data.result or recipe.result
+      recipe.ingredients = data.ingredients or recipe.ingredients
+      recipe.machine = data.machine or recipe.machine
+      recipe.enabled = data.enabled or recipe.enabled
+      recipe.preferred = preferred
       return
+    end
+  end
+
+  error(("No recipe found for %s with id %d"):format(name, id))
+end
+
+--- Remove a recipe by its name and id
+---@param name string The name of the recipe to remove.
+---@param id number The random id of the recipe to remove.
+function RecipeHandler.remove_recipe(name, id)
+  local item_recipes = lookup[name]
+
+  if item_recipes then
+    -- Find the recipe in the lookup and remove it.
+    for i = 1, #item_recipes do
+      local recipe = item_recipes[i]
+      if recipe.random_id == id then
+        table.remove(item_recipes, i)
+        break
+      end
+    end
+
+    -- Find the recipe in the recipes list and remove it.
+    for i = 1, #recipes do
+      local recipe = recipes[i]
+      if recipe.result.name == name and recipe.random_id == id then
+        table.remove(recipes, i)
+        return
+      end
     end
   end
 

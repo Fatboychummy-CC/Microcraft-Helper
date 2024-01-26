@@ -19,6 +19,13 @@ return function(run_menu)
       end
     },
     {
+      name = "Edit Recipe Preferences",
+      description = "Edit the preferred recipe for an item with multiple recipes. These override machine preferences, if any are set.",
+      action = function()
+        run_menu("items.edit_preferences")
+      end
+    },
+    {
       name = "Remove Item",
       description = "Remove a recipe.",
       action = function()
