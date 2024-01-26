@@ -885,6 +885,8 @@ function RecipeHandler.create_recipe(item, output_count, ingredients, machine, i
   }
 
   table.insert(recipes, recipe)
+  lookup[item] = lookup[item] or {}
+  table.insert(lookup[item], recipe)
 
   return recipe
 end
