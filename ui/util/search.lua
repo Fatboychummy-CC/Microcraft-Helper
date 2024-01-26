@@ -6,8 +6,9 @@ local fzy = require "fzy_lua"
 --- Allows you to search for something.
 ---@param menu_subtitle string The subtitle of the menu.
 ---@param initial_list table<integer,string> The initial list of results. If nothing has been entered yet, this will be shown.
+---@param no_selection_allowed boolean? If true, the user can select the "No results found." item and the current text will instead be returned.
 ---@return string? text The text the user entered, or nil if the user cancelled.
-return function(menu_subtitle, initial_list)
+return function(menu_subtitle, initial_list, no_selection_allowed)
   local w, h = term.getSize()
   local current_text = ""
   local selected = 1
@@ -27,6 +28,11 @@ return function(menu_subtitle, initial_list)
     -- Add a textbox at the bottom of the screen.
     PrimeUI.textBox(term.current(), 4, h - 1, w - 6, 1, "Press END to cancel.")
     PrimeUI.keyAction(keys["end"], "cancel")
+    PrimeUI.keyAction(keys.enter, function()
+      if no_selection_allowed and list[1] == "No results found." then
+        PrimeUI.resolve("current_text")
+      end
+    end)
 
     -- Ensure something exists in the list
     if #list == 0 then
@@ -92,6 +98,8 @@ return function(menu_subtitle, initial_list)
     if input == "inputBox" and box == input_name
     or input == "done" then
       return initial_list[selected]
+    elseif input == "current_text" then
+      return current_text
     elseif input == "keyAction" and box == "cancel" then
       return -- cancelled.
     end
