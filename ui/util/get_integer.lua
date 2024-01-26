@@ -30,35 +30,39 @@ return function(menu_subtitle, default_value, min, max)
 
   PrimeUI.keyAction(keys.up, function()
     current_n = current_n + 1
-    redraw_textbox(tostring(current_n))
 
     if current_n > max then
       current_n = max
     end
+
+    redraw_textbox(tostring(current_n))
   end)
   PrimeUI.keyAction(keys.down, function()
     current_n = current_n - 1
-    redraw_textbox(tostring(current_n))
 
     if current_n < min then
       current_n = min
     end
+
+    redraw_textbox(tostring(current_n))
   end)
   PrimeUI.keyAction(keys.pageUp, function()
     current_n = current_n + 1000
-    redraw_textbox(tostring(current_n))
 
     if current_n > max then
       current_n = max
     end
+
+    redraw_textbox(tostring(current_n))
   end)
   PrimeUI.keyAction(keys.pageDown, function()
     current_n = current_n - 1000
-    redraw_textbox(tostring(current_n))
 
     if current_n < min then
       current_n = min
     end
+
+    redraw_textbox(tostring(current_n))
   end)
 
   PrimeUI.keyAction(keys["end"], "cancel")
