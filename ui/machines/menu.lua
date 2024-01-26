@@ -12,6 +12,13 @@ return function(run_menu)
       end
     },
     {
+      name = "View Machines",
+      description = "View information about a machine.",
+      action = function()
+        run_menu("machines.view")
+      end
+    },
+    {
       name = "Edit Machine",
       description = "Edit a machine's name and preference level.",
       action = function()
