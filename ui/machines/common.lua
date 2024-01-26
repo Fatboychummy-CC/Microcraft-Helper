@@ -1,6 +1,6 @@
 --- Common functionality between the various machine menus.
 
-local file_helper = require "file_helper" :instanced("data")
+local file_helper = require "file_helper":instanced("data")
 
 ---@class MachineData
 ---@field name string The name of the machine.

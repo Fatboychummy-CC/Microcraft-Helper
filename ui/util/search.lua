@@ -46,7 +46,7 @@ return function(menu_subtitle, initial_list, no_selection_allowed)
         PrimeUI.resolve("done")
       end, function(sel)
         selected = sel
-    end)
+      end)
 
     -- Add a seperator between the input box and the results.
     PrimeUI.horizontalLine(term.current(), 4, 8, w - 6)
@@ -69,7 +69,7 @@ return function(menu_subtitle, initial_list, no_selection_allowed)
         local matches = fzy.filter(current_text, initial_list)
 
         if #matches == 0 then
-          matches = {{0, {}, 0}} -- this is the strangest default value I've made yet, it looks like a face
+          matches = { { 0, {}, 0 } } -- this is the strangest default value I've made yet, it looks like a face
         end
 
         list = {}
@@ -78,7 +78,7 @@ return function(menu_subtitle, initial_list, no_selection_allowed)
           table.insert(list, initial_list[matches[i][1]] or "No results found.")
         end
 
-         -- Set the currently selected item to the first item returned
+        -- Set the currently selected item to the first item returned
         selected = matches[1][1]
       end
 
@@ -96,7 +96,7 @@ return function(menu_subtitle, initial_list, no_selection_allowed)
     local input, box = PrimeUI.run()
 
     if input == "inputBox" and box == input_name
-    or input == "done" then
+        or input == "done" then
       return initial_list[selected]
     elseif input == "current_text" then
       return current_text

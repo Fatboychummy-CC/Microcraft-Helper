@@ -14,13 +14,17 @@ return function(title)
   PrimeUI.label(term.current(), 3, 5, title)
 
   -- Draw the confirmation labels.
-  PrimeUI.textBox(term.current(), 4, 7, 5, 1, " Yes", current_selection and colors.green or colors.white, current_selection and colors.white or colors.black)
-  PrimeUI.textBox(term.current(), 4, 9, 5, 1, " No", not current_selection and colors.red or colors.white, not current_selection and colors.white or colors.black)
+  PrimeUI.textBox(term.current(), 4, 7, 5, 1, " Yes", current_selection and colors.green or colors.white,
+    current_selection and colors.white or colors.black)
+  PrimeUI.textBox(term.current(), 4, 9, 5, 1, " No", not current_selection and colors.red or colors.white,
+    not current_selection and colors.white or colors.black)
   local function action()
     current_selection = not current_selection
 
-    PrimeUI.textBox(term.current(), 4, 7, 5, 1, " Yes", current_selection and colors.green or colors.white, current_selection and colors.white or colors.black)
-    PrimeUI.textBox(term.current(), 4, 9, 5, 1, " No", not current_selection and colors.red or colors.white, not current_selection and colors.white or colors.black)
+    PrimeUI.textBox(term.current(), 4, 7, 5, 1, " Yes", current_selection and colors.green or colors.white,
+      current_selection and colors.white or colors.black)
+    PrimeUI.textBox(term.current(), 4, 9, 5, 1, " No", not current_selection and colors.red or colors.white,
+      not current_selection and colors.white or colors.black)
   end
 
   PrimeUI.keyAction(keys.up, action)

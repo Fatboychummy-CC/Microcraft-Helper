@@ -8,7 +8,7 @@ local catch_error = require "ui.util.catch_error"
 ---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
   local recipe_data = get_item_details()
-  
+
   if recipe_data then
     recipe_handler.insert(recipe_data)
     recipe_handler.save()

@@ -44,7 +44,8 @@ return function(title, options, go_back, go_back_top, go_back_text)
     PrimeUI.label(term.current(), 3, 5, title)
 
     -- Set up the textbox (directly below the selection box)
-    local redraw_textbox = PrimeUI.textBox(term.current(), 4, 7 + height + 2, len + 3, th - 7 - height, options[1].description or "")
+    local redraw_textbox = PrimeUI.textBox(term.current(), 4, 7 + height + 2, len + 3, th - 7 - height,
+      options[1].description or "")
 
     -- Set up the selection box
     local selected = menus[1]
