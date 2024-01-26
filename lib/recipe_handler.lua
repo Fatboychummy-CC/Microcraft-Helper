@@ -966,7 +966,13 @@ end
 ---@param item string The item to get the recipes for.
 ---@return Recipe[]? recipes The recipes for the given item. Nil if nothing.
 function RecipeHandler.get_recipes(item)
-  return lookup[item]
+  return util.deep_copy(lookup[item])
+end
+
+--- Get the lookup table of recipes
+---@return RecipeLookup lookup The lookup table of recipes.
+function RecipeHandler.get_lookup()
+  return util.deep_copy(lookup)
 end
 
 --- Get a list of all the items that have recipes.
