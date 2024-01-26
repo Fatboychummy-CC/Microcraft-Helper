@@ -6,6 +6,8 @@ local search = require "ui.util.search"
 local get_integer = require "ui.util.get_integer"
 local catch_error = require "ui.util.catch_error"
 
+local file_helper = require "file_helper"
+
 --- Crafting menu -> Search for an item, then get a crafting plan for it.
 ---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
@@ -75,7 +77,12 @@ return function(run_menu)
       recipe_handler.build_recipe_graph()
       local plan = recipe_handler.get_first_recipe(item, needed, 100, preferred_recipes)
       if plan then
-        crafting_output("Crafting Plan", table.concat(recipe_handler.get_plan_as_text(plan, 1), "\n"))
+        local text_plan = table.concat(recipe_handler.get_plan_as_text(plan, 1), "\n")
+        file_helper:write("crafting_plan.txt", text_plan)
+
+        text_plan = text_plan .. "\n\nThe above crafting plan was also written to crafting_plan.txt."
+
+        crafting_output(("Crafting Plan - x%d %s"):format(needed, item), text_plan)
       else
         error("No recipe found.", 0)
       end
