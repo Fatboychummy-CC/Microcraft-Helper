@@ -3,10 +3,14 @@ local PrimeUI = require "PrimeUI_cherrypicked"
 --- Get an integer value from the user (or nil if the user cancelled).
 ---@param menu_subtitle string The subtitle of the menu.
 ---@param default_value number? The default value to show in the input box.
+---@param min number? The minimum value the user can enter.
+---@param max number? The maximum value the user can enter.
 ---@return number? value The value the user entered, or nil if the user cancelled.
-return function(menu_subtitle, default_value)
+return function(menu_subtitle, default_value, min, max)
   local w = term.getSize()
   local current_n = tonumber(default_value) or 0
+  min = min or -math.huge
+  max = max or math.huge
 
   -- Set up the page.
   PrimeUI.clear()
@@ -27,18 +31,34 @@ return function(menu_subtitle, default_value)
   PrimeUI.keyAction(keys.up, function()
     current_n = current_n + 1
     redraw_textbox(tostring(current_n))
+
+    if current_n > max then
+      current_n = max
+    end
   end)
   PrimeUI.keyAction(keys.down, function()
     current_n = current_n - 1
     redraw_textbox(tostring(current_n))
+
+    if current_n < min then
+      current_n = min
+    end
   end)
   PrimeUI.keyAction(keys.pageUp, function()
     current_n = current_n + 1000
     redraw_textbox(tostring(current_n))
+
+    if current_n > max then
+      current_n = max
+    end
   end)
   PrimeUI.keyAction(keys.pageDown, function()
     current_n = current_n - 1000
     redraw_textbox(tostring(current_n))
+
+    if current_n < min then
+      current_n = min
+    end
   end)
 
   PrimeUI.keyAction(keys["end"], "cancel")
