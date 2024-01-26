@@ -112,11 +112,14 @@ local function ensmallify()
       },
       ingredients = {},
       random_id = recipe.random_id,
-      preferred = recipe.preferred,
     }
 
     if recipe.enabled then
       small_recipe.enabled = true
+    end
+
+    if recipe.preferred then
+      small_recipe.preferred = true
     end
 
     if recipe.machine == "crafting table" then
