@@ -868,14 +868,15 @@ end
 ---@param output_count number The amount of the item that are outputted by the recipe.
 ---@param ingredients RecipeIngredient[] The ingredients required to craft the item.
 ---@param machine string? The machine used to craft the item. Defaults to "crafting table".
+---@param is_fluid boolean? Whether or not the item is a fluid. Defaults to false.
 ---@return Recipe recipe The recipe created.
-function RecipeHandler.create_recipe(item, output_count, ingredients, machine)
+function RecipeHandler.create_recipe(item, output_count, ingredients, machine, is_fluid)
   ---@type Recipe
   local recipe = {
     result = {
       name = item,
       amount = output_count,
-      fluid = false
+      fluid = not not is_fluid
     },
     ingredients = ingredients,
     machine = machine or "crafting table",
