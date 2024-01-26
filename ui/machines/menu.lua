@@ -6,18 +6,21 @@ return function(run_menu)
   quick_sub_menu("Machines", {
     {
       name = "Add Machine",
+      description = "Add a machine to the system so it can be used in recipes.",
       action = function()
         run_menu("machines.add")
       end
     },
     {
       name = "Edit Machine",
+      description = "Edit a machine's name and preference level.",
       action = function()
         run_menu("machines.edit")
       end
     },
     {
       name = "Remove Machine",
+      description = "Remove a machine from the system.",
       action = function()
         run_menu("machines.remove")
       end
