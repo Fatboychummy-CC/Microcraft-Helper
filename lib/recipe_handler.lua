@@ -286,8 +286,10 @@ end
 function RecipeHandler.save()
   local lines = {}
 
-  for i = 1, #recipes do
-    local recipe = recipes[i]
+  local recipes_small = ensmallify()
+
+  for i = 1, #recipes_small do
+    local recipe = recipes_small[i]
     local line = textutils.serialize(recipe, { compact = true })
 
     table.insert(lines, line)
