@@ -972,8 +972,34 @@ end
 function RecipeHandler.get_items()
   local items = {} ---@type string[]
 
-  for item_name, _ in pairs(lookup) do
+  for item_name in pairs(lookup) do
     table.insert(items, item_name)
+  end
+
+  table.sort(items) -- sort alphabetically
+
+  return items
+end
+
+--- Get a combined list of all items that have recipes and all items that are ingredients in recipes.
+---@return string[] items The list of items that have recipes or are ingredients in recipes.
+function RecipeHandler.get_all_items()
+  local items = {} ---@type string[]
+
+  local deduplicate = {} ---@type table<string, boolean>
+
+  for item_name in pairs(lookup) do
+    table.insert(items, item_name)
+    deduplicate[item_name] = true
+  end
+
+  for _, recipe in ipairs(recipes) do
+    for _, ingredient in ipairs(recipe.ingredients) do
+      if not deduplicate[ingredient.name] then
+        table.insert(items, ingredient.name)
+        deduplicate[ingredient.name] = true
+      end
+    end
   end
 
   table.sort(items) -- sort alphabetically
