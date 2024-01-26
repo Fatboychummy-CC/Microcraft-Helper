@@ -863,16 +863,16 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
   return crafting_plans
 end
 
---- Create a new recipe for the given item.
+--- Create a new recipe for the given item, but do not insert it into the recipe list.
 ---@param item string The item to create the recipe for.
 ---@param output_count number The amount of the item that are outputted by the recipe.
 ---@param ingredients RecipeIngredient[] The ingredients required to craft the item.
 ---@param machine string? The machine used to craft the item. Defaults to "crafting table".
 ---@param is_fluid boolean? Whether or not the item is a fluid. Defaults to false.
 ---@return Recipe recipe The recipe created.
-function RecipeHandler.create_recipe(item, output_count, ingredients, machine, is_fluid)
+function RecipeHandler.create_recipe_object(item, output_count, ingredients, machine, is_fluid)
   ---@type Recipe
-  local recipe = {
+  return {
     result = {
       name = item,
       amount = output_count,
@@ -883,6 +883,18 @@ function RecipeHandler.create_recipe(item, output_count, ingredients, machine, i
     enabled = true,
     random_id = math.random(-999999999, 999999999) -- probably enough, considering this isn't meant to house every recipe ever
   }
+end
+
+--- Create a new recipe for the given item.
+---@param item string The item to create the recipe for.
+---@param output_count number The amount of the item that are outputted by the recipe.
+---@param ingredients RecipeIngredient[] The ingredients required to craft the item.
+---@param machine string? The machine used to craft the item. Defaults to "crafting table".
+---@param is_fluid boolean? Whether or not the item is a fluid. Defaults to false.
+---@return Recipe recipe The recipe created.
+function RecipeHandler.create_recipe(item, output_count, ingredients, machine, is_fluid)
+  ---@type Recipe
+  local recipe = RecipeHandler.create_recipe_object(item, output_count, ingredients, machine, is_fluid)
 
   table.insert(recipes, recipe)
   lookup[item] = lookup[item] or {}
