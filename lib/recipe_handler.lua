@@ -280,6 +280,10 @@ end
 function RecipeHandler.insert(recipe)
   ---@FIXME confirm the recipe is valid
   table.insert(recipes, recipe)
+  if not lookup[recipe.result.name] then
+    lookup[recipe.result.name] = {}
+  end
+  table.insert(lookup[recipe.result.name], recipe)
 end
 
 --- Save the recipes to the given file.
