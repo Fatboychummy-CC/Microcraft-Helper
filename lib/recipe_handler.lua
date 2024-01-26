@@ -109,7 +109,8 @@ local function ensmallify()
         amount = recipe.result.amount,
         fluid = recipe.result.fluid
       },
-      ingredients = {}
+      ingredients = {},
+      random_id = recipe.random_id
     }
 
     if recipe.enabled then
@@ -135,7 +136,7 @@ local function ensmallify()
       small_recipe.ingredients[j] = {
         name = ingredient.name,
         amount = ingredient.amount,
-        fluid = ingredient.fluid
+        fluid = ingredient.fluid,
       }
 
       if small_recipe.ingredients[j].fluid == false then
@@ -1029,6 +1030,44 @@ function RecipeHandler.get_all_items()
   table.sort(items) -- sort alphabetically
 
   return items
+end
+
+--- Get a recipe via its name and id
+---@param name string The name of the recipe to get.
+---@param id number The random id of the recipe to get.
+---@return Recipe? recipe The recipe, or nil if not found.
+function RecipeHandler.get_recipe(name, id)
+  local item_recipes = lookup[name]
+
+  for i = 1, #item_recipes do
+    local recipe = item_recipes[i]
+    if recipe.random_id == id then
+      return util.deep_copy(recipe)
+    end
+  end
+
+  return nil
+end
+
+--- Edit data for a given recipe
+---@param name string The name of the recipe to edit.
+---@param id number The random id of the recipe to edit.
+---@param data Recipe The new data for the recipe, random ID will be ignored, so you can use RecipeHandler.create_recipe_object to create the data.
+function RecipeHandler.edit_recipe(name, id, data)
+  local item_recipes = lookup[name]
+
+  for i = 1, #item_recipes do
+    local recipe = item_recipes[i]
+    if recipe.random_id == id then
+      recipe.result = data.result
+      recipe.ingredients = data.ingredients
+      recipe.machine = data.machine
+      recipe.enabled = data.enabled
+      return
+    end
+  end
+
+  error(("No recipe found for %s with id %d"):format(name, id))
 end
 
 return RecipeHandler
