@@ -99,14 +99,11 @@ return function(item_data)
 
   local is_fluid = confirm("Is the output a fluid?")
 
-  local recipe = recipe_handler.create_recipe(
+  return recipe_handler.create_recipe_object(
     new_name,
     output_count,
     ingredients,
     machine,
     is_fluid
   )
-  recipe_handler.save()
-
-  return recipe
 end
