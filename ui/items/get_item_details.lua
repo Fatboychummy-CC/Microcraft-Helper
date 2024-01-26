@@ -42,8 +42,9 @@ local recipe_handler  = require "recipe_handler"
 
 --- Get information about an item.
 ---@param item_data Recipe? The item data to edit, if any.
+---@param default_item_search_name string? The default item name to search for.
 ---@return Recipe? recipe The new recipe for the item.
-return function(item_data)
+return function(item_data, default_item_search_name)
   local new_data = util.deep_copy(item_data) or {
     result = {
       name = "",
@@ -55,7 +56,7 @@ return function(item_data)
   }
   new_data.ingredients = {} -- clear ingredients, since we're going to be adding them manually
 
-  local new_name = get_text("Enter item name", new_data.result.name)
+  local new_name = search("Enter item name", recipe_handler.get_all_items(), true, default_item_search_name)
   if not new_name then
     return
   end

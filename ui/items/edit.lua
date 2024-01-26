@@ -45,7 +45,7 @@ return function(run_menu)
     end
 
     -- Get the new recipe data
-    local new_recipe_data = catch_error(get_item_details, recipe_data)
+    local new_recipe_data = catch_error(get_item_details, recipe_data, recipe_data.result.name)
 
     if not new_recipe_data then
       return
