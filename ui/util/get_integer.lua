@@ -32,6 +32,15 @@ return function(menu_subtitle, default_value)
     current_n = current_n - 1
     redraw_textbox(tostring(current_n))
   end)
+  PrimeUI.keyAction(keys.pageUp, function()
+    current_n = current_n + 1000
+    redraw_textbox(tostring(current_n))
+  end)
+  PrimeUI.keyAction(keys.pageDown, function()
+    current_n = current_n - 1000
+    redraw_textbox(tostring(current_n))
+  end)
+
   PrimeUI.keyAction(keys["end"], "cancel")
   PrimeUI.keyAction(keys.enter, "done")
 
