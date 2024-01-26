@@ -4,7 +4,7 @@ local get_item_details = require "ui.items.get_item_details"
 local catch_error = require "ui.util.catch_error"
 local search = require "ui.util.search"
 
---- Edit machine menu -> Search for a machine by name, then edit the name and preference level.
+--- Edit item menu -> Search for an item by name, then edit its recipe.
 ---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
   -- Get the list of item names

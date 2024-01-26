@@ -4,7 +4,7 @@ local catch_error = require "ui.util.catch_error"
 local good_response = require "ui.util.good_response"
 local search = require "ui.util.search"
 
---- Edit machine menu -> Search for a machine by name, then edit the name and preference level.
+--- View item menu -> Search for an item by name, then display the item's information.
 ---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
   -- Get the list of item names
