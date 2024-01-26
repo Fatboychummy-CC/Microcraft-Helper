@@ -12,6 +12,13 @@ return function(run_menu)
       end
     },
     {
+      name = "View Items",
+      description = "View information about an item and its recipe.",
+      action = function()
+        run_menu("items.view")
+      end
+    },
+    {
       name = "Edit Item",
       description = "Edit an item and its recipe.",
       action = function()
