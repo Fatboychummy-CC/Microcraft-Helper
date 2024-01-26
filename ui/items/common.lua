@@ -2,9 +2,8 @@
 
 local recipe_handler = require "recipe_handler"
 
-local common = {
-  machine_list = {}
-}
+
+local common = {}
 
 --- Load the recipes from the file.
 function common.load()
