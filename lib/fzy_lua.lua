@@ -21,8 +21,8 @@
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   THE SOFTWARE.
 
-  2024 Fatboychummy: Nothing has been altered from the original file, except
-  for the addition of this comment.
+  2024-01-26 Fatboychummy: Nothing has been altered from the original file,
+  except for the addition of this comment.
   Source can be found at: https://github.com/swarn/fzy-lua
 ]]
 
