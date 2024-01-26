@@ -28,7 +28,7 @@ local function main()
     local ok, value = pcall(require, "ui." .. name) -- efficient_code.exe
 
     if not ok then
-      error(("Failed to load menu: %s"):format(name), 2)
+      error(("Failed to load menu: %s: %s"):format(name, value), 2)
     end
 
     if type(value) ~= "function" then
