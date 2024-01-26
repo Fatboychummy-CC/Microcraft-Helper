@@ -11,5 +11,6 @@ return function(run_menu)
   
   if recipe_data then
     recipe_handler.insert(recipe_data)
+    recipe_handler.save()
   end
 end

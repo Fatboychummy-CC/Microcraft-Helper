@@ -53,6 +53,7 @@ return function(item_data)
     ingredients = {},
     machine = "crafting table",
   }
+  new_data.ingredients = {} -- clear ingredients, since we're going to be adding them manually
 
   local new_name = get_text("Enter item name", new_data.result.name)
   if not new_name then
