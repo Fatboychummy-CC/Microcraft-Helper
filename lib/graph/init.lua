@@ -1,24 +1,7 @@
 --- A graph data structure.
 
 local graph_node = require "graph.node"
-
---- Deep copy a value
----@generic T
----@param t T The value to copy.
----@return T copy The copy of the value.
-local function deep_copy(t)
-  if type(t) ~= "table" then
-    return t
-  end
-
-  local copy = {}
-
-  for k, v in pairs(t) do
-    copy[k] = deep_copy(v)
-  end
-
-  return copy
-end
+local util = require "util"
 
 ---@class Graph
 ---@field nodes GraphNode[] A list of all nodes in the graph.
@@ -93,7 +76,7 @@ function graph:clone()
 
   -- Pass 1: Create all nodes
   for _, node in ipairs(self.nodes) do
-    node_map[node] = new_graph:add_node(deep_copy(node.value))
+    node_map[node] = new_graph:add_node(util.deep_copy(node.value))
   end
 
   -- Pass 2: Connect all nodes

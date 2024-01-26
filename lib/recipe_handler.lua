@@ -15,6 +15,7 @@ local expect = require "cc.expect".expect --[[@as fun(pos: number, value: any, .
 local file_helper = require "file_helper" :instanced("data")
 local graph = require "graph"
 local shallow_serialize = require "graph.shallow_serialize"
+local util = require "util"
 
 --------------------------------------------------------------------------------
 --                    Lua Language Server Type Definitions                    --
@@ -150,24 +151,6 @@ local function ensmallify()
   end
 
   return smallified
-end
-
---- Deep copy a value
----@generic T
----@param t T The value to copy.
----@return T copy The copy of the value.
-local function deep_copy(t)
-  if type(t) ~= "table" then
-    return t
-  end
-
-  local copy = {}
-
-  for k, v in pairs(t) do
-    copy[k] = deep_copy(v)
-  end
-
-  return copy
 end
 
 --- Build/rebuild the recipes list into a lookup table of output items (keys) to a list of recipes (values).
@@ -332,7 +315,7 @@ function RecipeHandler.build_recipe_graph()
       local recipe = item_recipes[i]
       recipe_graph:add_node({
         item = item_name,
-        recipe = deep_copy(recipe),
+        recipe = util.deep_copy(recipe),
         needed = 0,
         crafts = 0,
         output_count = 0
@@ -707,7 +690,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
 
           -- a surface level copy should be fine, but we'll use deep copy here
           -- in case I change anything in the future.
-          local new_step_list = deep_copy(step_list)
+          local new_step_list = util.deep_copy(step_list)
           step_lists[#step_lists + 1] = new_step_list
 
           new_step_list[#new_step_list] = nil -- remove the last entry, since we'll be stepping through a new graph pretending this iteration didn't happen.
