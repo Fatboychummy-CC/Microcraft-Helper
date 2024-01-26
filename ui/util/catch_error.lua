@@ -7,6 +7,11 @@ local PrimeUI = require "PrimeUI_cherrypicked"
 return function(f, ...)
   local values = table.pack(pcall(f, ...))
   if not values[1] then
+    if values[2] == "terminate_elevated" then
+      -- Program termination requested and was elevated by a previous catch_error.
+      return
+    end
+
     local w, h = term.getSize()
 
     -- Set up the page.
@@ -21,6 +26,11 @@ return function(f, ...)
     PrimeUI.keyAction(keys.enter, "done")
 
     PrimeUI.run()
+
+    if values[2] == "Terminated" then
+      -- elevate the error
+      error("terminate_elevated", 0)
+    end
   end
 
   return table.unpack(values, 2, values.n)
