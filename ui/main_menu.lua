@@ -6,7 +6,7 @@ local catch_error = require "ui.util.catch_error"
 return function(run_menu)
   catch_error(quick_sub_menu, "Main Menu", {
     {
-      name = "Items",
+      name = "Items and Recipes",
       description = "Add, remove, or edit items, as well as their recipes.",
       action = function()
         run_menu("items.menu")
