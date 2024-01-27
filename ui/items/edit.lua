@@ -3,6 +3,7 @@ local recipe_handler = require "recipe_handler"
 local get_item_details = require "ui.items.get_item_details"
 local catch_error = require "ui.util.catch_error"
 local search = require "ui.util.search"
+local good_response  = require "ui.util.good_response"
 
 --- Edit item menu -> Search for an item by name, then edit its recipe.
 ---@param run_menu fun(name: string) The function to run another menu
@@ -45,13 +46,15 @@ return function(run_menu)
     end
 
     -- Get the new recipe data
-    local new_recipe_data = catch_error(get_item_details, recipe_data, recipe_data.result.name)
+    local ok, new_recipe_data = catch_error(get_item_details, recipe_data, recipe_data.result.name)
 
-    if not new_recipe_data then
+    if not ok or not new_recipe_data then
       return
     end
 
     recipe_handler.edit_recipe(item_name, recipe_id, new_recipe_data)
     recipe_handler.save()
+
+    good_response("Item edited", ("Edited item %s (outputs %d)."):format(new_recipe_data.result.name, new_recipe_data.result.amount))
   end
 end

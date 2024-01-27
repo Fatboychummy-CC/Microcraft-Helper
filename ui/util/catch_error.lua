@@ -33,5 +33,5 @@ return function(f, ...)
     end
   end
 
-  return table.unpack(values, 2, values.n)
+  return table.unpack(values, 1, values.n)
 end

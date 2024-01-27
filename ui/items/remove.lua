@@ -1,4 +1,5 @@
 local recipe_handler = require "recipe_handler"
+local good_response  = require "ui.util.good_response"
 
 local search = require "ui.util.search"
 local confirm = require "ui.util.confirmation_menu"
@@ -42,5 +43,6 @@ return function(run_menu)
 
     recipe_handler.remove_recipe(item_name, recipe_id)
     recipe_handler.save()
+    good_response("Item removed", ("Removed item %s."):format(recipe))
   end
 end
