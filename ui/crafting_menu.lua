@@ -1,7 +1,7 @@
 local recipe_handler = require "recipe_handler"
 
 local machines_common = require "ui.machines.common"
-local crafting_output = require "ui.util.crafting_plan_menu"
+local crafting_output = require "ui.util.good_response"
 local search = require "ui.util.search"
 local get_integer = require "ui.util.get_integer"
 local catch_error = require "ui.util.catch_error"
