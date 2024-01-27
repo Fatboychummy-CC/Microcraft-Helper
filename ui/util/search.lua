@@ -29,6 +29,13 @@ return function(menu_subtitle, initial_list, no_selection_allowed, default_searc
     -- Add a textbox at the bottom of the screen.
     PrimeUI.textBox(term.current(), 4, h - 1, w - 6, 1, "Press END to cancel.")
     PrimeUI.keyAction(keys["end"], "cancel")
+
+    if no_selection_allowed then
+      PrimeUI.keyCombo(keys.enter, false, false, true, function()
+        PrimeUI.resolve("current_text")
+      end)
+    end
+
     PrimeUI.keyAction(keys.enter, function()
       if no_selection_allowed and list[1] == "No results found." then
         PrimeUI.resolve("current_text")
