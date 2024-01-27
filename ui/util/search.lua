@@ -53,7 +53,15 @@ return function(menu_subtitle, initial_list, no_selection_allowed, default_searc
       function(sel)
         PrimeUI.resolve("done")
       end, function(sel)
-        selected = sel
+        -- find the selection in the initial list
+        local selection = list[sel]
+
+        for i = 1, #initial_list do
+          if initial_list[i] == selection then
+            selected = i
+            break
+          end
+        end
       end)
 
     -- Add a seperator between the input box and the results.
