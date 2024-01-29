@@ -5,7 +5,7 @@ local PrimeUI = require "PrimeUI_cherrypicked"
 ---@param ... any The arguments to pass to the function.
 ---@return any returns The return values of the function, or nil if the function errored.
 return function(f, ...)
-  local values = table.pack(pcall(f, ...))
+  local values = table.pack(xpcall(f, debug.traceback, ...))
   if not values[1] then
     if values[2] == "terminate_elevated" then
       -- Program termination requested and was elevated by a previous catch_error.
