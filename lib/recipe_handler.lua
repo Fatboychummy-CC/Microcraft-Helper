@@ -924,8 +924,16 @@ function RecipeHandler.get_plan_as_text(plan, plan_number)
 
   table.insert(textual, "===============")
   table.insert(textual, ("Crafting plan #%d raw material cost:"):format(plan_number or 1))
+
+  local raw_materials = {}
   for item_name, amount in pairs(RecipeHandler.get_raw_material_cost(plan)) do
-    table.insert(textual, ("  %s: %d"):format(item_name, amount))
+    table.insert(raw_materials, {item_name, amount})
+  end
+
+  table.sort(raw_materials, function(a, b) return a[1] < b[1] end)
+
+  for _, data in ipairs(raw_materials) do
+    table.insert(textual, ("  %s: %d"):format(data[1], data[2]))
   end
   table.insert(textual, "===============")
 
