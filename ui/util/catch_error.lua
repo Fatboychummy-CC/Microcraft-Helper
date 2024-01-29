@@ -16,9 +16,7 @@ return function(f, ...)
 
     -- Set up the page.
     PrimeUI.clear()
-    PrimeUI.label(term.current(), 3, 2, "Microcraft Helper", colors.orange)
-    PrimeUI.horizontalLine(term.current(), 3, 3, #("Microcraft Helper") + 2, colors.orange)
-    PrimeUI.label(term.current(), 3, 5, "Error", colors.orange)
+    require "ui.title" ("Error", colors.orange, colors.orange)
 
     PrimeUI.textBox(term.current(), 3, 7, w - 4, h - 12, values[2], colors.red)
     PrimeUI.textBox(term.current(), 3, h - 4, w - 4, 1, "Press enter to continue.", colors.white)

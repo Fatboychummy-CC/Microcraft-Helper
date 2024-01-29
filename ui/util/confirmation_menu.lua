@@ -9,9 +9,7 @@ return function(title)
 
   -- Set up the page.
   PrimeUI.clear()
-  PrimeUI.label(term.current(), 3, 2, "Microcraft Helper")
-  PrimeUI.horizontalLine(term.current(), 3, 3, #("Microcraft Helper") + 2)
-  PrimeUI.label(term.current(), 3, 5, title)
+  require "ui.title" (title)
 
   -- Draw the confirmation labels.
   PrimeUI.textBox(term.current(), 4, 7, 5, 1, " Yes", current_selection and colors.green or colors.white,

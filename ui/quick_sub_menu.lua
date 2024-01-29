@@ -39,9 +39,7 @@ return function(title, options, go_back, go_back_top, go_back_text)
 
     -- Set up the page.
     PrimeUI.clear()
-    PrimeUI.label(term.current(), 3, 2, "Microcraft Helper")
-    PrimeUI.horizontalLine(term.current(), 3, 3, #("Microcraft Helper") + 2)
-    PrimeUI.label(term.current(), 3, 5, title)
+    require "ui.title" (title)
 
     -- Set up the textbox (directly below the selection box)
     local redraw_textbox = PrimeUI.textBox(term.current(), 4, 7 + height + 2, len + 3, th - 7 - height,

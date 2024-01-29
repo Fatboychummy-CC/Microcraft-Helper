@@ -11,9 +11,7 @@ return function(menu_subtitle, default_text)
 
   -- Set up the page.
   PrimeUI.clear()
-  PrimeUI.label(term.current(), 3, 2, "Microcraft Helper")
-  PrimeUI.horizontalLine(term.current(), 3, 3, #("Microcraft Helper") + 2)
-  PrimeUI.label(term.current(), 3, 5, menu_subtitle)
+  require "ui.title" (menu_subtitle)
 
   -- Draw a box around the input box.
   PrimeUI.borderBox(term.current(), 4, 7, w - 6, 1)
