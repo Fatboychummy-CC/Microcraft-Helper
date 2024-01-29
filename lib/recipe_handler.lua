@@ -77,7 +77,7 @@ local util = require "util"
 --                  End Lua Language Server Type Definitions                  --
 --------------------------------------------------------------------------------
 
-local _DEBUG = true
+local _DEBUG = false
 local function prints(s, ...)
   if _DEBUG then
     local inputs = table.pack(...)
