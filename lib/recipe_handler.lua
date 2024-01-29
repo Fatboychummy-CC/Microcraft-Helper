@@ -77,7 +77,7 @@ local util = require "util"
 --                  End Lua Language Server Type Definitions                  --
 --------------------------------------------------------------------------------
 
-local _DEBUG = false
+local _DEBUG = true
 local function prints(s, ...)
   if _DEBUG then
     local inputs = table.pack(...)
@@ -413,11 +413,31 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
 
   -- First, we need to find the recipe for the given item. This should also give
   -- us our node.
-  local recipe_node = recipe_graph:find_node(function(n) return n.value.item == item end) --[[@as RecipeGraphNode]]
+  local recipe_nodes = recipe_graph:find_nodes(function(n) return n.value.item == item end) --[[@as RecipeGraphNode[] ]]
 
-  if not recipe_node then
+  if #recipe_nodes == 0 then
     return nil, "No recipe found for item: " .. item
   end
+
+  local recipe_node = recipe_nodes[1]
+
+  local recipe_selection = recipe_selections[item]
+  if recipe_selection then
+    prints(0, "Recipe selection found for", item, ":", recipe_selection.result.name, "(", recipe_selection.random_id, ")")
+    -- We need to use this recipe instead of the others.
+    recipe_node = recipe_graph:find_node(function(n) return n.value.recipe.random_id == recipe_selection.random_id end) --[[@as RecipeGraphNode]]
+  else
+    prints(0, "No recipe selection found for", item)
+  end
+
+  if not recipe_node then
+    -- All ingredients should have nodes by this point
+    error(("Recipe node not found for %s. This is likely a bug, please report it and include your recipe list."):format(item))
+  end
+
+  -- And ensure we mark this recipe as selected, so future iterations will use
+  -- this recipe.
+  recipe_selections[item] = recipe_node.value.recipe
 
   -- Now, we step from the recipe node, into its ingredients, and calculate how
   -- many of each ingredient we need to craft the given amount of the item.

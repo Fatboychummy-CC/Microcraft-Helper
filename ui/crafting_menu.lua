@@ -35,14 +35,14 @@ return function(run_menu)
   local preferred_recipes = {}
 
   for _, item in ipairs(item_names) do
-    local item_recipes = recipes[item.name]
+    local item_recipes = recipes[item]
 
     if item_recipes then
       if #item_recipes > 1 then
         local preferred_recipe = nil ---@type Recipe?
         local preferred_machine = nil ---@type MachineData?
 
-        for _, recipe in ipairs(item_recipes) do
+        for i, recipe in ipairs(item_recipes) do
           if recipe.preferred then
             preferred_recipe = recipe
             break
@@ -55,7 +55,7 @@ return function(run_menu)
         end
 
         if preferred_recipe then
-          table.insert(preferred_recipes, preferred_recipe)
+          preferred_recipes[item] = preferred_recipe
         end
       end
     end
