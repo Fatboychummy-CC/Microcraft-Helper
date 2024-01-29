@@ -43,7 +43,7 @@ local to_get = {
   ]]
 }
 local program_name = "Microcraft Helper"
-local pinestore_id = nil -- Set this to the ID of the pinestore project if you wish to note to pinestore that a download has occurred.
+local pinestore_id = 56 -- Set this to the ID of the pinestore project if you wish to note to pinestore that a download has occurred.
 
 -- #########################################
 
