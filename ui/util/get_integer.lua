@@ -45,7 +45,7 @@ return function(menu_subtitle, default_value, min, max)
     redraw_textbox(tostring(current_n))
   end)
   PrimeUI.keyAction(keys.pageUp, function()
-    current_n = current_n + 1000
+    current_n = current_n + 100
 
     if current_n > max then
       current_n = max
@@ -54,7 +54,7 @@ return function(menu_subtitle, default_value, min, max)
     redraw_textbox(tostring(current_n))
   end)
   PrimeUI.keyAction(keys.pageDown, function()
-    current_n = current_n - 1000
+    current_n = current_n - 100
 
     if current_n < min then
       current_n = min
