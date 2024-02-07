@@ -500,8 +500,8 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
       prints(spaces, "New needed for", ingredient_node.value.item, ":", ingredient_node.value.needed)
 
       if not item_exclusions[ingredient_node.value.item] then
-      -- Now, we need to step into the ingredient's ingredients.
-      step(ingredient_node, depth - 1, spaces)
+        -- Now, we need to step into the ingredient's ingredients.
+        step(ingredient_node, depth - 1, spaces)
       else
         prints(spaces, "Excluding costs for", ingredient_node.value.item)
       end
@@ -554,8 +554,8 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
       end
 
       if not item_exclusions[ingredient_node.value.item] then
-      -- Now, we need to step into the ingredient's ingredients.
-      build_plan(ingredient_node, depth - 1)
+        -- Now, we need to step into the ingredient's ingredients.
+        build_plan(ingredient_node, depth - 1)
       end
     end
 
@@ -1066,6 +1066,34 @@ function RecipeHandler.get_all_items()
       if not deduplicate[ingredient.name] then
         table.insert(items, ingredient.name)
         deduplicate[ingredient.name] = true
+      end
+    end
+  end
+
+  table.sort(items) -- sort alphabetically
+
+  return items
+end
+
+-- Get a list of items that are needed to craft the given item.
+---@param plan CraftingPlan The crafting plan to get the items for.
+---@return string[] items The list of items that are needed to craft the given item.
+function RecipeHandler.get_needed_items(plan)
+  local items = {} ---@type string[]
+  local item_set = {} ---@type table<string, boolean>
+
+  for _, step in ipairs(plan.steps) do
+    -- Only add it if we haven't already added it, and if it's not a raw material.
+    if not item_set[step.item] and lookup[step.item] then
+      table.insert(items, step.item)
+      item_set[step.item] = true
+    end
+
+    for _, ingredient in ipairs(step.recipe.ingredients) do
+      -- Only add it if we haven't already added it, and if it's not a raw material.
+      if not item_set[ingredient.name] and lookup[ingredient.name] then
+        table.insert(items, ingredient.name)
+        item_set[ingredient.name] = true
       end
     end
   end
