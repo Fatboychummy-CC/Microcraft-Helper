@@ -399,15 +399,17 @@ end
 ---@param amount number The amount of the item to craft.
 ---@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipe for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
 ---@param recipe_selections table<string, Recipe>? A recipe in this lookup table will be used if crafting the item requires one of the ingredients in the list. This is useful for items which have multiple crafting recipes, as you can override which recipe that ingredient will be made with. Any item that has multiple recipes without a recipe in this list will use the first recipe that can be grabbed.
+---@param item_exclusions table<string, true>? A dictionary containing any items that the user already has, and should not be included in the crafting plan.
 ---@return FinalizedCraftingPlan? plan The crafting plan for the given item, or nil if no recipe was found.
 ---@return string? error The error message if no recipe was found.
-function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selections)
+function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selections, item_exclusions)
   expect(1, item, "string")
   expect(2, amount, "number")
   expect(3, max_depth, "number", "nil")
   expect(4, recipe_selections, "table", "nil")
   max_depth = max_depth or 1
   recipe_selections = recipe_selections or {}
+  item_exclusions = item_exclusions or {}
 
   zero_recipe_graph()
 
@@ -497,8 +499,12 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
       ingredient_node.value.needed = ingredient_node.value.needed + (ingredient.amount * (node.value.crafts - old_crafts))
       prints(spaces, "New needed for", ingredient_node.value.item, ":", ingredient_node.value.needed)
 
+      if not item_exclusions[ingredient_node.value.item] then
       -- Now, we need to step into the ingredient's ingredients.
       step(ingredient_node, depth - 1, spaces)
+      else
+        prints(spaces, "Excluding costs for", ingredient_node.value.item)
+      end
     end
 
   end
@@ -547,8 +553,10 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
         error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient.name))
       end
 
+      if not item_exclusions[ingredient_node.value.item] then
       -- Now, we need to step into the ingredient's ingredients.
       build_plan(ingredient_node, depth - 1)
+      end
     end
 
     -- Now that we've stepped through the ingredients, add this recipe to the
