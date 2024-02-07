@@ -7,7 +7,7 @@ local util = require "util"
 ---@param message string The message to display.
 ---@param ... integer? The keys possible to use to confirm the selection. Defaults to just keys.enter.
 ---@return integer key The key that was pressed to confirm the selection.
-return function(subtitle, message, ...)
+return function(subtitle, message, custom_continue_message, ...)
   local w, h = term.getSize()
   local keys_possible = table.pack(...)
 
@@ -17,7 +17,7 @@ return function(subtitle, message, ...)
   require "ui.title" (subtitle, colors.green, colors.green)
 
   PrimeUI.textBox(scrollbox, 1, 1, w - 5, 100, message, colors.blue)
-  PrimeUI.textBox(term.current(), 3, h - 2, w - 4, 1, "Press enter to continue.", colors.white)
+  PrimeUI.textBox(term.current(), 3, h - 2, w - 4, 1, custom_continue_message or "Press enter to continue.", colors.white)
 
   local key_pressed
   if keys_possible.n == 0 then
