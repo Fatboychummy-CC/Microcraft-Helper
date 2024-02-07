@@ -63,7 +63,7 @@ return function(run_menu)
 
 
   while true do
-    local item = search("Select Item", item_names)
+    local item = search("Select item to craft", item_names)
     if not item then
       return
     end
@@ -74,18 +74,52 @@ return function(run_menu)
     end
 
     catch_error(function()
+      local exclusions = {}
       recipe_handler.build_recipe_graph()
-      local plan = recipe_handler.get_first_recipe(item, needed, 100, preferred_recipes)
-      if plan then
-        local text_plan = table.concat(recipe_handler.get_plan_as_text(plan, 1), "\n")
-        file_helper:write("crafting_plan.txt", text_plan)
+      repeat
+        local plan = recipe_handler.get_first_recipe(
+          item,
+          needed,
+          100,
+          preferred_recipes,
+          exclusions
+        )
+        local key_pressed
+        if plan then
+          local text_plan = table.concat(recipe_handler.get_plan_as_text(plan, 1), "\n")
+          file_helper:write("crafting_plan.txt", text_plan)
 
-        text_plan = text_plan .. "\n\nThe above crafting plan was also written to crafting_plan.txt."
+          text_plan = text_plan .. "\n\nThe above crafting plan was also written to crafting_plan.txt."
 
-        crafting_output(("Crafting Plan - x%d %s"):format(needed, item), text_plan)
-      else
-        error("No recipe found.", 0)
-      end
+          key_pressed = crafting_output(
+            ("Crafting Plan - x%d %s"):format(needed, item),
+            text_plan,
+            "Press enter to continue, or 1 to select items to remove the cost of from the plan.",
+            keys.enter,
+            keys.one
+          )
+
+          if key_pressed == keys.one then
+            sleep() -- Clear the event queue, so we don't get a key press from the previous menu.
+            local needed_items = recipe_handler.get_needed_items(plan)
+
+            -- Remove the main item from the list of needed items.
+            for i, needed_item in ipairs(needed_items) do
+              if needed_item == item then
+                table.remove(needed_items, i)
+                break
+              end
+            end
+
+            local exclusion = search("Select item to remove/re-add.", needed_items)
+            if exclusion then
+              exclusions[exclusion] = not exclusions[exclusion]
+            end
+          end
+        else
+          error("No recipe found.", 0)
+        end
+      until key_pressed == keys.enter
     end)
   end
 end
