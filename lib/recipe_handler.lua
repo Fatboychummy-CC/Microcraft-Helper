@@ -16,6 +16,7 @@ local file_helper = require "file_helper" :instanced("data")
 local graph = require "graph"
 local shallow_serialize = require "graph.shallow_serialize"
 local util = require "util"
+local machines_common = require "ui.machines.common"
 
 --------------------------------------------------------------------------------
 --                    Lua Language Server Type Definitions                    --
@@ -33,7 +34,7 @@ local util = require "util"
 ---@class Recipe A single crafting recipe.
 ---@field result RecipeIngredient The resultant item.
 ---@field ingredients RecipeIngredient[] The ingredients required to craft the item.
----@field machine string The machine used to craft the item. Defaults to "crafting table".
+---@field machine integer The id of the machine used to craft the item. Defaults to `0` (Crafting Table).
 ---@field enabled boolean Whether or not the recipe is enabled.
 ---@field preferred boolean Whether or not the recipe is preferred.
 ---@field random_id number A random ID used to identify the recipe in the graph, mainly used when there are multiple recipes for the same item.
@@ -122,7 +123,7 @@ local function ensmallify()
       small_recipe.preferred = true
     end
 
-    if recipe.machine == "crafting table" then
+    if recipe.machine == 0 then
       small_recipe.machine = nil
     else
       small_recipe.machine = recipe.machine
@@ -200,7 +201,7 @@ function RecipeHandler.load()
     if recipe then
       table.insert(recipes, recipe)
     else
-      printError(("Failed to parse recipe on line %d: %s"):format(i, line))
+      error(("Failed to parse recipe on line %d: %s"):format(i, line))
     end
 
     if i % 1000 == 0 then
@@ -250,7 +251,7 @@ function RecipeHandler.parse_recipe(line)
   end
 
   if not recipe.machine then
-    recipe.machine = "crafting table"
+    recipe.machine = 0
   end
 
   for i = 1, #recipe.ingredients do
@@ -905,7 +906,7 @@ end
 ---@param item string The item to create the recipe for.
 ---@param output_count number The amount of the item that are outputted by the recipe.
 ---@param ingredients RecipeIngredient[] The ingredients required to craft the item.
----@param machine string? The machine used to craft the item. Defaults to "crafting table".
+---@param machine integer? The machine used to craft the item. Defaults to "crafting table".
 ---@param is_fluid boolean? Whether or not the item is a fluid. Defaults to false.
 ---@param is_preferred boolean? Whether or not the recipe is preferred. Defaults to false.
 ---@return Recipe recipe The recipe created.
@@ -918,7 +919,7 @@ function RecipeHandler.create_recipe_object(item, output_count, ingredients, mac
       fluid = not not is_fluid
     },
     ingredients = ingredients,
-    machine = machine or "crafting table",
+    machine = machine or 0,
     enabled = true,
     preferred = not not is_preferred,
     random_id = math.random(-999999999, 999999999) -- probably enough, considering this isn't meant to house every recipe ever
@@ -929,7 +930,7 @@ end
 ---@param item string The item to create the recipe for.
 ---@param output_count number The amount of the item that are outputted by the recipe.
 ---@param ingredients RecipeIngredient[] The ingredients required to craft the item.
----@param machine string? The machine used to craft the item. Defaults to "crafting table".
+---@param machine integer? The machine used to craft the item. Defaults to "crafting table".
 ---@param is_fluid boolean? Whether or not the item is a fluid. Defaults to false.
 ---@return Recipe recipe The recipe created.
 function RecipeHandler.create_recipe(item, output_count, ingredients, machine, is_fluid)
@@ -987,7 +988,7 @@ function RecipeHandler.get_plan_as_text(plan, plan_number)
     end
 
     local line = line_formatter:format(
-      step.recipe.machine,
+      machines_common.machines[step.recipe.machine].name,
       step.output_count,
       step.recipe.result.name,
       step.output_count > 1 and "s" or "",
@@ -1174,6 +1175,11 @@ function RecipeHandler.remove_recipe(name, id)
   end
 
   error(("No recipe found for %s with id %d"):format(name, id))
+end
+
+--- Copy the save file to a backup.
+function RecipeHandler.backup_save()
+  file_helper:write(SAVE_FILE .. ".bak", file_helper:get_all(SAVE_FILE))
 end
 
 return RecipeHandler

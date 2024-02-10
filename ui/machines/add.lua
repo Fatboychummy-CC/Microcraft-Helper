@@ -9,11 +9,11 @@ return function(run_menu)
   local ok, name, preference = catch_error(get_machine_details)
 
   if ok and name and preference then
-    if catch_error(common.add_machine, {
-      name = name,
-      preference_level = preference
-    }) then
-      good_response("Machine edited", ("Edited machine %s with preference level %d."):format(name, preference))
+    if catch_error(common.add_machine,
+      name,
+      preference
+    ) then
+      good_response("Machine added", ("Added machine %s with preference level %d."):format(name, preference))
     end
   end
 end

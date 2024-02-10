@@ -22,6 +22,8 @@ local function main()
   local items_common = require "ui.items.common"
   items_common.load()
 
+  require "data_fixer_upper".check()
+
   --- Run the specified menu.
   ---@param name string The name of the menu to run.
   local function run_menu(name)
