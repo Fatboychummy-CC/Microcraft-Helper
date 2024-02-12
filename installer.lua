@@ -10,6 +10,7 @@ local to_get = {
   "extern:lib/graph/shallow_serialize.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/lib/graph/shallow_serialize.lua",
   "extern:lib/recipe_handler.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/lib/recipe_handler.lua",
   "extern:lib/util.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/lib/util.lua",
+  "extern:lib/data_fixer_upper.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/lib/data_fixer_upper.lua",
   "extern:ui/crafting_menu.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/crafting_menu.lua",
   "extern:ui/items/add.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/items/add.lua",
   "extern:ui/items/common.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/items/common.lua",
@@ -30,11 +31,11 @@ local to_get = {
   "extern:ui/quick_sub_menu.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/quick_sub_menu.lua",
   "extern:ui/util/catch_error.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/util/catch_error.lua",
   "extern:ui/util/confirmation_menu.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/util/confirmation_menu.lua",
-  "extern:ui/util/crafting_plan_menu.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/util/crafting_plan_menu.lua",
   "extern:ui/util/get_integer.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/util/get_integer.lua",
   "extern:ui/util/get_text.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/util/get_text.lua",
   "extern:ui/util/good_response.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/util/good_response.lua",
   "extern:ui/util/search.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/util/search.lua",
+  "extern:ui/title.lua:https://raw.githubusercontent.com/Fatboychummy-CC/Microcraft-Helper/main/ui/title.lua",
   --[[
   "extern:filename.lua:https://url.url/", -- if you need an external url
   "paste:filename.lua:pastecode", -- to download from pastebin
