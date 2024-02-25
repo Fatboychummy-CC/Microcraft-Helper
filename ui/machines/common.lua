@@ -54,6 +54,7 @@ function common.load()
   -- Always ensure the crafting table exists
   if not common.machines[0] then
     common.machines[0] = common.new_machine("Crafting Table")
+    common.machines[0].id = 0
   end
 
   return list
@@ -105,7 +106,7 @@ end
 ---@param name string The name of the machine to add.
 ---@param preference_level number? The preference level of the machine. Defaults to 0.
 function common.add_machine(name, preference_level)
-  local preference_level = 0
+  preference_level = preference_level or 0
 
   -- Disallow addition of crafting table.
   if name:lower() == "crafting table" then

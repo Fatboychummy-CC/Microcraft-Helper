@@ -52,7 +52,7 @@ return function(item_data, default_item_search_name)
       fluid = false
     },
     ingredients = {},
-    machine = "crafting table",
+    machine = machines_common.machines[0].id,
   }
   new_data.ingredients = {} -- clear ingredients, since we're going to be adding them manually
 
@@ -65,6 +65,8 @@ return function(item_data, default_item_search_name)
   for _, data in pairs(machines_common.machines) do
     table.insert(machine_names, data.name)
   end
+
+  ---@type string|integer?
   local machine = search("Select machine for recipe", machine_names)
   if not machine then
     return
@@ -100,6 +102,18 @@ return function(item_data, default_item_search_name)
   end
 
   local is_fluid = confirm("Is the output a fluid?")
+
+  -- Find the machine ID
+  for id, data in pairs(machines_common.machines) do
+    if data.name == machine then
+      machine = id
+      break
+    end
+  end
+  if type(machine) ~= "number" then
+    error(("Machine %s not found."):format(machine), 0)
+  end
+
 
   return recipe_handler.create_recipe_object(
     new_name,

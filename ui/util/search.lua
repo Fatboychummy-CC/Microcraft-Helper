@@ -60,7 +60,8 @@ return function(menu_subtitle, initial_list, no_selection_allowed, default_searc
             break
           end
         end
-      end)
+      end
+    )
 
     -- Add a seperator between the input box and the results.
     PrimeUI.horizontalLine(term.current(), 4, 8, w - 6)

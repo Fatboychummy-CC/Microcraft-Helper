@@ -987,6 +987,10 @@ function RecipeHandler.get_plan_as_text(plan, plan_number)
       ))
     end
 
+    if not machines_common.machines[step.recipe.machine] then
+      error(("Machine with id %s not found."):format(step.recipe.machine))
+    end
+
     local line = line_formatter:format(
       machines_common.machines[step.recipe.machine].name,
       step.output_count,
