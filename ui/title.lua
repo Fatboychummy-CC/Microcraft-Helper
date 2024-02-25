@@ -4,7 +4,7 @@
 local PrimeUI = require "PrimeUI_cherrypicked"
 
 local MAIN_TITLE = "Microcraft Helper"
-local VERSION_STRING = "0.3.0"
+local VERSION_STRING = "0.3.1"
 local COMBINED = ("%s %s"):format(MAIN_TITLE, VERSION_STRING)
 
 --- Create the title of the page.
