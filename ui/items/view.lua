@@ -1,6 +1,6 @@
 local recipe_handler = require "recipe_handler"
+local machines_common = require "ui.machines.common"
 
-local catch_error = require "ui.util.catch_error"
 local good_response = require "ui.util.good_response"
 local search = require "ui.util.search"
 
@@ -25,9 +25,11 @@ return function(run_menu)
   -- Sort the recipe names
   table.sort(recipe_names)
 
+  local last_recipe = nil
+
   while true do
     -- Search for a recipe
-    local recipe = search("Select Recipe", recipe_names)
+    local recipe = search("Select Recipe", recipe_names, false, last_recipe)
 
     if recipe then
       -- Get the item name and recipe ID from the recipe name
@@ -51,16 +53,21 @@ return function(run_menu)
         table.insert(ingredients_text, ingredient_formatter:format(ingredient.amount, ingredient.name, ingredient.fluid and "(fluid)" or ""))
       end
 
+      -- Find the machine by its id
+      local machine_name = machines_common.machines[recipe_data.machine] and machines_common.machines[recipe_data.machine].name or "Unknown Machine"
+
       good_response(
         recipe, 
         ("Machine: %s\nOutputs: %d    Preferred? %s\nID: %d\nRecipe:\n%s"):format(
-          recipe_data.machine,
+          machine_name,
           recipe_data.result.amount,
           recipe_data.preferred and "Yes" or "No",
           recipe_data.random_id,
           table.concat(ingredients_text, "\n")
         )
       )
+
+      last_recipe = item_name
     else
       return
     end
