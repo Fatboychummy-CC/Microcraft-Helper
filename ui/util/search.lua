@@ -16,6 +16,8 @@ return function(menu_subtitle, initial_list, no_selection_allowed, default_searc
 
   local list = initial_list
 
+  local default_flag = true
+
   while true do
     -- Set up the page.
     PrimeUI.clear()
@@ -110,8 +112,9 @@ return function(menu_subtitle, initial_list, no_selection_allowed, default_searc
     PrimeUI.inputBox(term.current(), 4, 7, w - 6, input_name, nil, nil, nil, nil, input_changed, current_text)
 
 
-    if default_search then
+    if default_flag and default_search then
       input_changed(default_search)
+      default_flag = false
     end
 
     local input, box = PrimeUI.run()
