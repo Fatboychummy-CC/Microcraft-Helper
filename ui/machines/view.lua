@@ -13,6 +13,9 @@ return function(run_menu)
     machine_names_to_ids[data.name] = data.id
   end
 
+  -- Sort the machine names
+  table.sort(machine_names)
+
   while true do
     local machine = search("Select Machine", machine_names)
     if machine then

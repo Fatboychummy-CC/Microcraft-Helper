@@ -15,6 +15,9 @@ return function(run_menu)
     machine_names_to_ids[data.name] = data.id
   end
 
+  -- Sort the machine names
+  table.sort(machine_names)
+
   local machine = search("Select Machine", machine_names)
   if machine then
     local ok, new_name, new_preference = catch_error(get_machine_details, common.machines[machine_names_to_ids[machine]])
