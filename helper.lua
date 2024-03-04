@@ -15,12 +15,23 @@
 package.path = package.path .. ";lib/?.lua;lib/?/init.lua"
 
 local function main()
-  -- Initial setup: Load everything
-  local machines_common = require "ui.machines.common"
-  machines_common.load()
+  local load_ok, err = pcall(function()
+    -- Initial setup: Load everything
+    local machines_common = require "ui.machines.common"
+    machines_common.load()
 
-  local items_common = require "ui.items.common"
-  items_common.load()
+    local items_common = require "ui.items.common"
+    items_common.load()
+
+    local recipe_handler = require "recipe_handler"
+    recipe_handler.load()
+  end)
+
+  if not load_ok then
+    printError("Error while loading data:", err)
+    require "data_fixer_upper".check()
+    return
+  end
 
   require "data_fixer_upper".check()
 
