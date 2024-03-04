@@ -29,6 +29,9 @@ local function main()
 
   if not load_ok then
     printError("Error while loading data:", err)
+
+    print("Checking if data can be fixed...")
+
     require "data_fixer_upper".check()
     return
   end

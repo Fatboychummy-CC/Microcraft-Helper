@@ -963,6 +963,9 @@ end
 function RecipeHandler.get_plan_as_text(plan, plan_number)
   local textual = {} ---@type string[]
 
+  -- Get the lookup of item ids to names
+  local item_lookup = items_common.get_items()
+
   table.insert(textual, "===============")
   table.insert(textual, ("Crafting plan #%d raw material cost:"):format(plan_number or 1))
 
@@ -974,7 +977,7 @@ function RecipeHandler.get_plan_as_text(plan, plan_number)
   table.sort(raw_materials, function(a, b) return a[1] < b[1] end)
 
   for _, data in ipairs(raw_materials) do
-    table.insert(textual, ("  %s: %d"):format(data[1], data[2]))
+    table.insert(textual, ("  %s: %d"):format(item_lookup[data[1]] and item_lookup[data[1]].name or "Unknown Item", data[2]))
   end
   table.insert(textual, "===============")
 
@@ -993,7 +996,7 @@ function RecipeHandler.get_plan_as_text(plan, plan_number)
       end
       table.insert(ingredient_textual, ingredient_formatter:format(
         ingredient.amount * step.crafts,
-        ingredient.id,
+        item_lookup[ingredient.id] and item_lookup[ingredient.id].name or "Unknown Item",
         ingredient.amount * step.crafts > 1 and "s" or "",
         ingredient.fluid and " (fluid)" or ""
       ))
@@ -1004,9 +1007,9 @@ function RecipeHandler.get_plan_as_text(plan, plan_number)
     end
 
     local line = line_formatter:format(
-      machines_common.machines[step.recipe.machine].id,
+      machines_common.machines[step.recipe.machine] and machines_common.machines[step.recipe.machine].name or "Unknown Machine",
       step.output_count,
-      step.recipe.result.id,
+      item_lookup[step.recipe.result.id] and item_lookup[step.recipe.result.id].name or "Unknown Item",
       step.output_count > 1 and "s" or "",
       table.concat(ingredient_textual)
     )

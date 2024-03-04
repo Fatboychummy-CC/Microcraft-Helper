@@ -57,10 +57,10 @@ return function(run_menu)
       local ingredients_text = {}
       local ingredient_formatter = "  x%d %s %s"
       for _, ingredient in pairs(recipe_data.ingredients) do
-        local ingredient_name = items_common.get_item_name(ingredient.name)
+        local ingredient_name = items_common.get_item_name(ingredient.id)
 
         if not ingredient_name then
-          error(("Ingredient name for item ID %d does not exist."):format(ingredient.name), 0)
+          error(("Ingredient name for item ID %d does not exist."):format(ingredient.id), 0)
         end
         table.insert(ingredients_text, ingredient_formatter:format(ingredient.amount, ingredient_name, ingredient.fluid and "(fluid)" or ""))
       end

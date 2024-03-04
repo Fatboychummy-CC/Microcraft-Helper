@@ -60,9 +60,16 @@ return function(run_menu)
     end
   end
 
+  -- Get all item names from item ids
+  local item_names = {}
+  for _, item_id in ipairs(item_ids) do
+    table.insert(item_names, items_common.get_item_name(item_id))
+  end
+
+  table.sort(item_names)
 
   while true do
-    local item_name = search("Select item to craft", item_ids)
+    local item_name = search("Select item to craft", item_names)
     if not item_name then
       return
     end
