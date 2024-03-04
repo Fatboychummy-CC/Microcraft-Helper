@@ -4,8 +4,10 @@ local machines_common = require "ui.machines.common"
 
 local fixer_upper = {}
 
+local fixes = {}
+
 --- Fix duplicate machine names by determining which id the machines should "collapse" to
-function fixer_upper.duplicate_machine_name_fixer()
+function fixes.duplicate_machine_names()
   print("Fixing duplicate machine names...")
 
   ---@type table<string, integer>
@@ -45,7 +47,7 @@ function fixer_upper.duplicate_machine_name_fixer()
 end
 
 --- Fix old style machine data (no id) to new style (with id). This also needs to update recipes to use the id instead of the name.
-function fixer_upper.machine_id_fixer()
+function fixes.machine_id_needed()
   print("Fixing machine data...")
 
   ---@type table<integer, MachineData>
@@ -107,7 +109,7 @@ end
 
 
 --- Fix recipe data that uses machine names instead of IDs.
-function fixer_upper.recipe_machine_fixer()
+function fixes.recipe_machine_needed()
   -- Update the recipes to use the new machine IDs.
   print("Fixing recipe data...")
 
@@ -180,11 +182,17 @@ end
 function fixer_upper.check()
   term.clear()
   term.setCursorPos(1, 1)
-  local duplicate_machine_names = checks.duplicate_machine_names()
-  local machine_id_needed = checks.machine_id_needed()
-  local recipe_machine_needed = checks.recipe_machine_needed()
+  local results = {}
+  local needs_run = false
+  for check_name, checker in pairs(checks) do
+    local out = checker()
+    results[check_name] = out
+    if out then
+      needs_run = true
+    end
+  end
 
-  if machine_id_needed or recipe_machine_needed or duplicate_machine_names then
+  if needs_run then
     term.setTextColor(colors.white)
     term.setCursorPos(1, 1)
     term.clear()
@@ -192,14 +200,8 @@ function fixer_upper.check()
     print("Data Fixer Upper needs to run, press 'q' to quit, or any other key to continue.")
     print("Your data will be backed up.")
     print("\nModules:")
-    if duplicate_machine_names then
-      print("- Duplicate machine names")
-    end
-    if machine_id_needed then
-      print("- Machine IDs")
-    end
-    if recipe_machine_needed then
-      print("- Recipe machine IDs")
+    for check_name, result in pairs(results) do
+      print("-", check_name, result and "needs to be run." or "is OK.")
     end
     sleep() -- Ensure the event queue is cleared.
     local ev, key = os.pullEvent("key")
@@ -213,25 +215,17 @@ function fixer_upper.check()
     machines_common.backup_save()
     recipe_handler.backup_save()
 
-    if duplicate_machine_names then
-      term.setTextColor(colors.orange)
-      print("Running machine ID fixer...")
-
-      fixer_upper.machine_id_fixer()
-    end
-
-    if machine_id_needed then
-      term.setTextColor(colors.orange)
-      print("Running machine ID fixer...")
+    for check_name, fixer in pairs(fixes) do
+      if results[check_name] then
+        term.setTextColor(colors.white)
+        print("Running", check_name, "fixer...")
       term.setTextColor(colors.lightGray)
-      fixer_upper.machine_id_fixer()
-    end
 
-    if recipe_machine_needed then
-      term.setTextColor(colors.orange)
-      print("Running recipe machine fixer...")
-      term.setTextColor(colors.lightGray)
-      fixer_upper.recipe_machine_fixer()
+        fixer()
+
+        term.setTextColor(colors.white)
+        print("Finished", check_name, "fixer.")
+      end
     end
 
     if checks.duplicate_machine_names() then
