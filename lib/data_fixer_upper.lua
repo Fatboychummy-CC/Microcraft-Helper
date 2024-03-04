@@ -94,7 +94,7 @@ function fixes.machine_id_needed()
           error(("Data fixer upper failed: No ID was generated for machine %s."):format(recipe.machine), 0)
         end
         recipe_count = recipe_count + 1
-        recipe_handler.edit_recipe(name, recipe.random_id, {
+        recipe_handler.edit_recipe(recipe.id, {
           machine = machine_names_to_ids[recipe.machine]
         })
       end
@@ -133,7 +133,7 @@ function fixes.recipe_machine_needed()
         if not machine then
           error(("Data fixer upper failed: No ID known for machine %s."):format(recipe.machine), 0)
         end
-        recipe_handler.edit_recipe(name, recipe.random_id, {
+        recipe_handler.edit_recipe(recipe.id, {
           machine = machine
         })
       end
@@ -194,11 +194,12 @@ function fixer_upper.check()
 
   if needs_run then
     term.setTextColor(colors.white)
-    term.setCursorPos(1, 1)
-    term.clear()
+    print() -- Ensure the cursor is on the screen.
 
     print("Data Fixer Upper needs to run, press 'q' to quit, or any other key to continue.")
-    print("Your data will be backed up.")
+    term.setTextColor(colors.yellow)
+    print("  Your data will be backed up.")
+    term.setTextColor(colors.white)
     print("\nModules:")
     for check_name, result in pairs(results) do
       print("-", check_name, result and "needs to be run." or "is OK.")
