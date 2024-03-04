@@ -90,8 +90,6 @@ local function prints(s, ...)
   end
 end
 
-local SAVE_FILE = "recipes.list"
-
 ---@type RecipeList
 local recipes = {}
 ---@type RecipeLookup
@@ -194,12 +192,15 @@ local function zero_recipe_graph()
 end
 
 ---@class RecipeHandler
-local RecipeHandler = {}
+local RecipeHandler = {
+  SAVE_FILE = "recipes.list",
+  BACKUP_FILE = "recipes.list.bak"
+}
 
 --- Load the recipes from the given file. WARNING: This wipes the currently loaded recipe list first, then loads the recipes.
 function RecipeHandler.load()
   recipes = {} ---@type RecipeList
-  local lines = file_helper:get_lines(SAVE_FILE)
+  local lines = file_helper:get_lines(RecipeHandler.SAVE_FILE)
 
   for i = 1, lines.n do
     local line = lines[i]
@@ -305,7 +306,7 @@ function RecipeHandler.save()
     table.insert(lines, line)
   end
 
-  file_helper:write(SAVE_FILE, table.concat(lines, "\n"))
+  file_helper:write(RecipeHandler.SAVE_FILE, table.concat(lines, "\n"))
 end
 
 --- Build/rebuild the recipe graph.
@@ -1154,17 +1155,17 @@ function RecipeHandler.edit_recipe(id, data)
     end
   end
 
-  error(("No recipe found with id %d"):format(id))
+  error(("No recipe found with id %d"):format(id), 2)
 end
 
 --- Remove a recipe by its id.
 ---@param id number The id of the recipe to remove.
-function RecipeHandler.remove_recipe(name, id)
+function RecipeHandler.remove_recipe(id)
   local s1, s2 = false, false
   -- Find the recipe in the main list and remove it.
   for i = 1, #recipes do
     local recipe = recipes[i]
-    if recipe.result.id == name and recipe.id == id then
+    if recipe.id == id then
       table.remove(recipes, i)
       s1 = true
       break
@@ -1183,12 +1184,12 @@ function RecipeHandler.remove_recipe(name, id)
     end
   end
 
-  error(("No recipe found for %s with id %d (%s|%s)"):format(name, id, s1, s2))
+  error(("No recipe found for item with id %d (%s|%s)"):format(id, s1, s2), 2)
 end
 
 --- Copy the save file to a backup.
 function RecipeHandler.backup_save()
-  file_helper:write(SAVE_FILE .. ".bak", file_helper:get_all(SAVE_FILE))
+  file_helper:write(RecipeHandler.BACKUP_FILE, file_helper:get_all(RecipeHandler.SAVE_FILE))
 end
 
 return RecipeHandler

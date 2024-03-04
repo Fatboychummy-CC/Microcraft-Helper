@@ -16,10 +16,11 @@ local common = {
       preference_level = 0,
       id = 0,
     }
-  }
-}
+  },
 
-local SAVE_FILE = "machines.lson"
+  SAVE_FILE = "machines.lson",
+  BACKUP_FILE = "machines.lson.bak"
+}
 
 --- Generate a unique integer for a machine.
 ---@return integer id The unique integer.
@@ -48,7 +49,7 @@ end
 --- Load the list of machine names from the file.
 ---@return table<integer, MachineData> list The list of machines.
 function common.load()
-  local list = file_helper:unserialize(SAVE_FILE, {})
+  local list = file_helper:unserialize(common.SAVE_FILE, {})
   common.machines = list
 
   -- Always ensure the crafting table exists
@@ -62,7 +63,7 @@ end
 
 --- Save the list of machine names to the file.
 function common.save()
-  file_helper:serialize(SAVE_FILE, common.machines, true)
+  file_helper:serialize(common.SAVE_FILE, common.machines, true)
 end
 
 --- Edit information about a machine.
@@ -145,7 +146,7 @@ end
 
 --- Backup the save file.
 function common.backup_save()
-  file_helper:write(SAVE_FILE .. ".bak", file_helper:get_all(SAVE_FILE))
+  file_helper:write(common.BACKUP_FILE, file_helper:get_all(common.SAVE_FILE))
 end
 
 return common

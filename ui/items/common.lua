@@ -17,7 +17,10 @@ local file_helper = require "file_helper":instanced("data")
 ---@class items_common
 local common = {
   ---@type table<integer, item_data>
-  item_lookup = {}
+  item_lookup = {},
+
+  SAVE_FILE = "items.lson",
+  BACKUP_FILE = "items.lson.bak"
 }
 
 --- Generate a unique id for an item.
@@ -76,7 +79,7 @@ end
 --- Load the recipes and items from a file.
 function common.load()
   -- Convert from a list to save a little bit of space
-  local list = file_helper:unserialize("items.lson", {})
+  local list = file_helper:unserialize(common.SAVE_FILE, {})
   common.item_lookup = {}
 
   for _, item in ipairs(list) do
@@ -92,7 +95,12 @@ function common.save()
     table.insert(list, item)
   end
 
-  file_helper:serialize("items.lson", list)
+  file_helper:serialize(common.SAVE_FILE, list)
+end
+
+--- Backup the recipes and items to a file.
+function common.backup_save()
+  file_helper:write(common.BACKUP_FILE, file_helper:get_all(common.SAVE_FILE))
 end
 
 return common
