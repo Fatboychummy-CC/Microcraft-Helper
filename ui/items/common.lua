@@ -30,7 +30,7 @@ local function generate_unique_id()
 
   repeat
     id = math.random(-1000000, 1000000)
-  until not common.item_ids[id]
+  until not common.item_lookup[id]
 
   return id
 end
@@ -95,12 +95,14 @@ function common.save()
     table.insert(list, item)
   end
 
-  file_helper:serialize(common.SAVE_FILE, list)
+  file_helper:serialize(common.SAVE_FILE, list, true)
 end
 
 --- Backup the recipes and items to a file.
 function common.backup_save()
-  file_helper:write(common.BACKUP_FILE, file_helper:get_all(common.SAVE_FILE))
+  if file_helper:exists(common.SAVE_FILE) then
+    file_helper:write(common.BACKUP_FILE, file_helper:get_all(common.SAVE_FILE))
+  end
 end
 
 return common
