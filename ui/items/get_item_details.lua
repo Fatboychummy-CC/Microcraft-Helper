@@ -45,18 +45,26 @@ local recipe_handler  = require "recipe_handler"
 ---@param default_item_search_name string? The default item name to search for.
 ---@return Recipe? recipe The new recipe for the item.
 return function(item_data, default_item_search_name)
-  local new_data = util.deep_copy(item_data) or {
-    result = {
-      name = "",
-      amount = 1,
-      fluid = false
-    },
-    ingredients = {},
-    machine = machines_common.machines[0].id,
-  }
+  local new_data = util.deep_copy(item_data) or recipe_handler.create_recipe_object("", 1, {}, 0, false)
+
   new_data.ingredients = {} -- clear ingredients, since we're going to be adding them manually
 
-  local new_name = search("Enter item name", recipe_handler.get_all_items(), true, default_item_search_name)
+  local item_id_list = recipe_handler.get_items()
+  local item_name_list = {}
+
+  for _, item_id in pairs(item_id_list) do
+    local item_name = items_common.get_item_name(item_id)
+
+    if not item_name then
+      error(("Item name for item ID %d does not exist."):format(item_id), 0)
+    end
+
+    table.insert(item_name_list, item_name)
+  end
+
+  table.sort(item_name_list)
+
+  local new_name = search("Enter item name", item_name_list, true, default_item_search_name)
   if not new_name then
     return
   end
@@ -83,8 +91,24 @@ return function(item_data, default_item_search_name)
   end
 
   local ingredients = {}
+
+  local all_item_ids = recipe_handler.get_all_items()
+  local all_item_names = {}
+
+  for _, item_id in pairs(all_item_ids) do
+    local item_name = items_common.get_item_name(item_id)
+
+    if not item_name then
+      error(("Item name for item ID %d does not exist."):format(item_id), 0)
+    end
+
+    table.insert(all_item_names, item_name)
+  end
+
+  table.sort(all_item_names)
+
   for i = 1, unique_items do
-    local ingredient_name = search("Select ingredient", recipe_handler.get_all_items(), true)
+    local ingredient_name = search("Select ingredient", all_item_names, true)
     if not ingredient_name then
       return
     end
@@ -94,8 +118,14 @@ return function(item_data, default_item_search_name)
       return
     end
 
+    local ingredient_id = items_common.get_item_id(ingredient_name)
+
+    if not ingredient_id then
+      error(("Item ID for item %s does not exist."):format(ingredient_name), 0)
+    end
+
     table.insert(ingredients, {
-      name = ingredient_name,
+      id = ingredient_id,
       amount = ingredient_count,
       fluid = false
     })
@@ -113,7 +143,6 @@ return function(item_data, default_item_search_name)
   if type(machine) ~= "number" then
     error(("Machine %s not found."):format(machine), 0)
   end
-
 
   return recipe_handler.create_recipe_object(
     new_name,
