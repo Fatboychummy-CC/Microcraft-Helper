@@ -246,6 +246,9 @@ function fixes.item_data_not_generated()
   end
 
   file_helper:write(recipe_handler.SAVE_FILE, table.concat(serialized, "\n"))
+
+  -- Save the items data back to the file.
+  items_common.save()
 end
 
 local checks = {}
