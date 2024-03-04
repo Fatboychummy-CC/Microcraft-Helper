@@ -43,13 +43,24 @@ function common.add_item(name)
   local item = {name = name, id = id}
 
   common.item_lookup[id] = item
+
+  common.save()
   return id
+end
+
+--- Edit an item in the list of items.
+---@param id integer The unique id of the item.
+---@param name string The new name of the item.
+function common.edit_item(id, name)
+  common.item_lookup[id].name = name
+  common.save()
 end
 
 --- Remove an item from the list of items.
 ---@param id integer The unique id of the item.
 function common.remove_item(id)
   common.item_lookup[id] = nil
+  common.save()
 end
 
 --- Get the list of items.

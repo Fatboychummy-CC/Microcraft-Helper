@@ -909,13 +909,30 @@ end
 ---@param machine integer? The machine used to craft the item. Defaults to "crafting table".
 ---@param is_fluid boolean? Whether or not the item is a fluid. Defaults to false.
 ---@param is_preferred boolean? Whether or not the recipe is preferred. Defaults to false.
+---@param previous_name string? The previous name of the item, if editing an existing recipe.
 ---@return Recipe recipe The recipe created.
-function RecipeHandler.create_recipe_object(item_name, output_count, ingredients, machine, is_fluid, is_preferred)
+function RecipeHandler.create_recipe_object(item_name, output_count, ingredients, machine, is_fluid, is_preferred, previous_name)
   -- Check items_common for the item id. If it doesn't exist, add it.
   local item_id = items_common.get_item_id(item_name)
+
+  if previous_name and not item_id then
+    -- The item id doesn't exist, but we have a previous name. This means the
+    -- item was renamed, so we need to get the id from the previous name.
+    item_id = items_common.get_item_id(previous_name)
+
   if not item_id then
+      -- The previous name doesn't exist, this is an error.
+      error(("Previous name %s does not exist."):format(previous_name), 2)
+    end
+
+    -- We need to update the item name in items_common.
+    items_common.edit_item(item_id, item_name)
+  elseif not previous_name and not item_id then
+    -- The item id doesn't exist, and we don't have a previous name. This means
+    -- the item is new, so we need to add it.
     item_id = items_common.add_item(item_name)
   end
+  ---@cast item_id integer It can no longer be nil after the above.
 
   ---@type Recipe
   return {

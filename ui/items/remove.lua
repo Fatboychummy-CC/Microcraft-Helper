@@ -5,7 +5,7 @@ local good_response  = require "ui.util.good_response"
 local search = require "ui.util.search"
 local confirm = require "ui.util.confirmation_menu"
 
---- Remove machine menu -> Search for a machine by name, then remove it, if the user confirms.
+--- Remove recipes menu -> Search for a recipe by name, then remove it, if the user confirms.
 ---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
   -- Get the list of item names

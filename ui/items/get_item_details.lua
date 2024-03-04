@@ -42,7 +42,7 @@ local recipe_handler  = require "recipe_handler"
 
 --- Get information about an item.
 ---@param item_data Recipe? The item data to edit, if any.
----@param default_item_search_name string? The default item name to search for.
+---@param default_item_search_name string? The default item name to search for. If this is supplied, it will be passed as the previous name to create_recipe_object (i.e: This argument assumes that we are editing a recipe, not creating a new one.)
 ---@return Recipe? recipe The new recipe for the item.
 return function(item_data, default_item_search_name)
   local new_data = util.deep_copy(item_data) or recipe_handler.create_recipe_object("", 1, {}, 0, false)
@@ -149,6 +149,8 @@ return function(item_data, default_item_search_name)
     output_count,
     ingredients,
     machine,
-    is_fluid
+    is_fluid,
+    false,
+    default_item_search_name
   )
 end

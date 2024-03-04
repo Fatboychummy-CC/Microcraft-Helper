@@ -6,7 +6,7 @@ local fzy = require "fzy_lua"
 --- Allows you to search for something.
 ---@param menu_subtitle string The subtitle of the menu.
 ---@param initial_list table<integer,string> The initial list of results. If nothing has been entered yet, this will be shown.
----@param no_selection_allowed boolean? If true, the user can select the "No results found." item and the current text will instead be returned.
+---@param no_selection_allowed boolean? If true, the user can select the "No results found." item and the current text will instead be returned. Also allows the user to press shift+enter to force the current name.
 ---@param default_search string? The default text to show in the input box.
 ---@return string? text The text the user entered, or nil if the user cancelled.
 return function(menu_subtitle, initial_list, no_selection_allowed, default_search)
