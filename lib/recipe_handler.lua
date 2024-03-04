@@ -920,7 +920,7 @@ function RecipeHandler.create_recipe_object(item_name, output_count, ingredients
     -- item was renamed, so we need to get the id from the previous name.
     item_id = items_common.get_item_id(previous_name)
 
-  if not item_id then
+    if not item_id then
       -- The previous name doesn't exist, this is an error.
       error(("Previous name %s does not exist."):format(previous_name), 2)
     end
@@ -1043,15 +1043,25 @@ end
 function RecipeHandler.get_raw_material_cost(plan)
   local cost = {} ---@type MaterialCost
 
+  -- Get the list of all item data
+  local item_data = items_common.get_items()
+
   for _, step in ipairs(plan.steps) do
     for _, ingredient in ipairs(step.recipe.ingredients) do
       if not lookup[ingredient.id] then
-        -- This is a raw material, so add it to the cost.
-        if not cost[ingredient.id] then
-          cost[ingredient.id] = 0
+
+        if not item_data[ingredient.id] then
+          error(("Item with id %d not found."):format(ingredient.id))
         end
 
-        cost[ingredient.id] = cost[ingredient.id] + (ingredient.amount * step.crafts)
+        if not item_data[ingredient.id].ignored then
+          -- This is a raw material and is not ignored, so add it to the cost.
+          if not cost[ingredient.id] then
+            cost[ingredient.id] = 0
+          end
+
+          cost[ingredient.id] = cost[ingredient.id] + (ingredient.amount * step.crafts)
+        end
       end
     end
   end
@@ -1102,6 +1112,20 @@ function RecipeHandler.get_all_items()
         table.insert(items, ingredient.id)
         deduplicate[ingredient.id] = true
       end
+    end
+  end
+
+  return items
+end
+
+--- Get a list of uncraftable items (items that do not have a recipe).
+---@return integer[] items The list of items that do not have a recipe.
+function RecipeHandler.get_uncraftable_items()
+  local items = {} ---@type integer[]
+
+  for item_id in pairs(items_common.get_items()) do
+    if not lookup[item_id] then
+      table.insert(items, item_id)
     end
   end
 
