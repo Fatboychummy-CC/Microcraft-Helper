@@ -1,5 +1,6 @@
 local recipe_handler = require "recipe_handler"
 local machines_common = require "ui.machines.common"
+local items_common = require "ui.items.common"
 
 local good_response = require "ui.util.good_response"
 local search = require "ui.util.search"
@@ -8,16 +9,22 @@ local search = require "ui.util.search"
 ---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
   -- Get the list of item names
-  local item_names = recipe_handler.get_items()
+  local item_ids = recipe_handler.get_items()
 
   -- Now we need to collect all recipes for the items -- we will combine the item name with its random ID to make a unique key
   local recipe_names = {}
 
-  for _, item_name in pairs(item_names) do
-    local recipes = recipe_handler.get_recipes(item_name)
+  for _, item_id in pairs(item_ids) do
+    local recipes = recipe_handler.get_recipes(item_id)
+    local item_name = items_common.get_item_name(item_id)
+
+    if not item_name then
+      error(("Item name for item ID %d does not exist."):format(item_id), 0)
+    end
+
     if recipes then
       for _, recipe in pairs(recipes) do
-        table.insert(recipe_names, ("%s (%s)"):format(item_name, recipe.random_id))
+        table.insert(recipe_names, ("%s (%s)"):format(item_name, recipe.id))
       end
     end
   end
@@ -41,7 +48,7 @@ return function(run_menu)
       end
 
       -- Get the recipe data
-      local recipe_data = recipe_handler.get_recipe(item_name, recipe_id)
+      local recipe_data = recipe_handler.get_recipe(recipe_id)
 
       if not recipe_data then
         error("Between then and now how THE HECK DOES IT NOT EXIST?????????", 0)
@@ -50,7 +57,12 @@ return function(run_menu)
       local ingredients_text = {}
       local ingredient_formatter = "  x%d %s %s"
       for _, ingredient in pairs(recipe_data.ingredients) do
-        table.insert(ingredients_text, ingredient_formatter:format(ingredient.amount, ingredient.name, ingredient.fluid and "(fluid)" or ""))
+        local ingredient_name = items_common.get_item_name(ingredient.id)
+
+        if not ingredient_name then
+          error(("Ingredient name for item ID %d does not exist."):format(ingredient.id), 0)
+        end
+        table.insert(ingredients_text, ingredient_formatter:format(ingredient.amount, ingredient_name, ingredient.fluid and "(fluid)" or ""))
       end
 
       -- Find the machine by its id
@@ -62,7 +74,7 @@ return function(run_menu)
           machine_name,
           recipe_data.result.amount,
           recipe_data.preferred and "Yes" or "No",
-          recipe_data.random_id,
+          recipe_data.id,
           table.concat(ingredients_text, "\n")
         )
       )

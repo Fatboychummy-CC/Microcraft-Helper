@@ -1,6 +1,7 @@
 local recipe_handler = require "recipe_handler"
-
 local machines_common = require "ui.machines.common"
+local items_common = require "ui.items.common"
+
 local crafting_output = require "ui.util.good_response"
 local search = require "ui.util.search"
 local get_integer = require "ui.util.get_integer"
@@ -11,7 +12,7 @@ local file_helper = require "file_helper"
 --- Crafting menu -> Search for an item, then get a crafting plan for it.
 ---@param run_menu fun(name: string) The function to run another menu
 return function(run_menu)
-  local item_names = recipe_handler.get_items()
+  local item_ids = recipe_handler.get_items()
 
   -- Calculate current recipe selections.
   -- Steps:
@@ -28,15 +29,13 @@ return function(run_menu)
   -- Step 2:
   local machines = machines_common.machines
 
-  -- Step 3:
-  local recipes = recipe_handler.get_lookup()
-
-  -- Step 4:
   local preferred_recipes = {}
 
-  for _, item in ipairs(item_names) do
-    local item_recipes = recipes[item]
+  for _, item_id in ipairs(item_ids) do
+    -- Step 3:
+    local item_recipes = recipe_handler.get_recipes(item_id)
 
+    -- Step 4:
     if item_recipes then
       if #item_recipes > 1 then
         local preferred_recipe = nil ---@type Recipe?
@@ -55,17 +54,30 @@ return function(run_menu)
         end
 
         if preferred_recipe then
-          preferred_recipes[item] = preferred_recipe
+          preferred_recipes[item_id] = preferred_recipe
         end
       end
     end
   end
 
+  -- Get all item names from item ids
+  local item_names = {}
+  for _, item_id in ipairs(item_ids) do
+    table.insert(item_names, items_common.get_item_name(item_id))
+  end
+
+  table.sort(item_names)
 
   while true do
-    local item = search("Select item to craft", item_names)
-    if not item then
+    local item_name = search("Select item to craft", item_names)
+    if not item_name then
       return
+    end
+
+    local item_id = items_common.get_item_id(item_name)
+
+    if not item_id then
+      error(("Item ID for item %s does not exist."):format(item_name), 0)
     end
 
     local needed = get_integer("How many do you need?", 1, 1)
@@ -78,7 +90,7 @@ return function(run_menu)
       recipe_handler.build_recipe_graph()
       repeat
         local plan = recipe_handler.get_first_recipe(
-          item,
+          item_id,
           needed,
           100,
           preferred_recipes,
@@ -92,7 +104,7 @@ return function(run_menu)
           text_plan = text_plan .. "\n\nThe above crafting plan was also written to crafting_plan.txt."
 
           key_pressed = crafting_output(
-            ("Crafting Plan - x%d %s"):format(needed, item),
+            ("Crafting Plan - x%d %s"):format(needed, item_name),
             text_plan,
             "Press enter to continue, or 1 to select items to remove the cost of from the plan.",
             keys.enter,
@@ -105,7 +117,7 @@ return function(run_menu)
 
             -- Remove the main item from the list of needed items.
             for i, needed_item in ipairs(needed_items) do
-              if needed_item == item then
+              if needed_item == item_name then
                 table.remove(needed_items, i)
                 break
               end

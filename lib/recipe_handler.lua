@@ -17,6 +17,7 @@ local graph = require "graph"
 local shallow_serialize = require "graph.shallow_serialize"
 local util = require "util"
 local machines_common = require "ui.machines.common"
+local items_common = require "ui.items.common"
 
 --------------------------------------------------------------------------------
 --                    Lua Language Server Type Definitions                    --
@@ -37,10 +38,10 @@ local machines_common = require "ui.machines.common"
 ---@field machine integer The id of the machine used to craft the item. Defaults to `0` (Crafting Table).
 ---@field enabled boolean Whether or not the recipe is enabled.
 ---@field preferred boolean Whether or not the recipe is preferred.
----@field random_id number A random ID used to identify the recipe in the graph, mainly used when there are multiple recipes for the same item.
+---@field id number A unique ID used to identify the recipe in the graph, mainly used when there are multiple recipes for the same item.
 
 ---@class RecipeIngredient A single ingredient in the recipe.
----@field name string The name of the ingredient.
+---@field id integer The id of the item.
 ---@field amount number The amount of the ingredient.
 ---@field fluid boolean Whether or not the ingredient is a fluid.
 
@@ -48,10 +49,10 @@ local machines_common = require "ui.machines.common"
 ---@field amount number The amount of the ingredient, in millibuckets.
 ---@field fluid true Whether or not the ingredient is a fluid.
 
----@alias RecipeLookup table<string, Recipe[]>
+---@alias RecipeLookup table<integer, Recipe[]>
 
 ---@class CraftingPlan A plan containing all the steps, in order, to craft the given item.
----@field item string The item to craft.
+---@field item integer The id of the item to craft.
 ---@field output_count number The amount of items that will be outputted.
 ---@field steps CraftingPlanStep[] The steps to craft the item.
 
@@ -59,20 +60,20 @@ local machines_common = require "ui.machines.common"
 ---@field raw_material_cost MaterialCost The cost of the raw materials needed to craft the item.
 
 ---@class CraftingPlanStep A single step in the crafting plan.
----@field item string The item to craft.
+---@field item integer The id of the item to craft.
 ---@field output_count number The amount of items that will be outputted.
 ---@field needed number The amount of the item crafted that are needed in future steps.
 ---@field crafts number The amount of times to repeat the crafting process.
 ---@field recipe Recipe? The recipe to use to craft the item, if the item can be crafted.
 
 ---@class MultiCraftPlanStep A single step in a crafting plan, that can have multiple recipes.
----@field item string The item to craft.
+---@field item integer The id of the item to craft.
 ---@field output_count number The amount of items that will be outputted.
 ---@field needed number The amount of the item crafted that are needed in future steps.
 ---@field crafts number The amount of times to repeat the crafting process.
 ---@field recipes Recipe[] The recipes that can be used to craft the item.
 
----@alias MaterialCost table<string, number>
+---@alias MaterialCost table<integer, number>
 
 --------------------------------------------------------------------------------
 --                  End Lua Language Server Type Definitions                  --
@@ -89,14 +90,24 @@ local function prints(s, ...)
   end
 end
 
-local SAVE_FILE = "recipes.list"
-
 ---@type RecipeList
 local recipes = {}
 ---@type RecipeLookup
 local lookup = {}
 ---@type RecipeGraph
 local recipe_graph = graph.new() --[[@as RecipeGraph]]
+
+--- Generate a unique id for a recipe.
+---@return integer id The unique id.
+local function generate_unique_id()
+  local id
+
+  repeat
+    id = math.random(-1000000, 1000000)
+  until not lookup[id]
+
+  return id
+end
 
 --- Create a smaller version of a recipe list with unneeded data removed (things like `fluid = false` can be nil, so it isn't included in the output data).
 ---@return table recipes The ensmallified list of recipes.
@@ -107,17 +118,13 @@ local function ensmallify()
     local recipe = recipes[i]
     local small_recipe = {
       result = {
-        name = recipe.result.name,
+        id = recipe.result.id,
         amount = recipe.result.amount,
         fluid = recipe.result.fluid
       },
       ingredients = {},
-      random_id = recipe.random_id,
+      id = recipe.id,
     }
-
-    if recipe.enabled then
-      small_recipe.enabled = true
-    end
 
     if recipe.preferred then
       small_recipe.preferred = true
@@ -140,7 +147,7 @@ local function ensmallify()
     for j = 1, #recipe.ingredients do
       local ingredient = recipe.ingredients[j]
       small_recipe.ingredients[j] = {
-        name = ingredient.name,
+        id = ingredient.id,
         amount = ingredient.amount,
         fluid = ingredient.fluid,
       }
@@ -167,13 +174,11 @@ local function build_lookup()
   for i = 1, #recipes do
     local recipe = recipes[i]
 
-    if recipe.enabled then
-      if not lookup[recipe.result.name] then
-        lookup[recipe.result.name] = {}
-      end
-
-      table.insert(lookup[recipe.result.name], recipe)
+    if not lookup[recipe.result.id] then
+      lookup[recipe.result.id] = {}
     end
+
+    table.insert(lookup[recipe.result.id], recipe)
   end
 end
 
@@ -187,21 +192,24 @@ local function zero_recipe_graph()
 end
 
 ---@class RecipeHandler
-local RecipeHandler = {}
+local RecipeHandler = {
+  SAVE_FILE = "recipes.list",
+  BACKUP_FILE = "recipes.list.bak"
+}
 
 --- Load the recipes from the given file. WARNING: This wipes the currently loaded recipe list first, then loads the recipes.
 function RecipeHandler.load()
   recipes = {} ---@type RecipeList
-  local lines = file_helper:get_lines(SAVE_FILE)
+  local lines = file_helper:get_lines(RecipeHandler.SAVE_FILE)
 
   for i = 1, lines.n do
     local line = lines[i]
-    local recipe = RecipeHandler.parse_recipe(line)
+    local recipe, err = RecipeHandler.parse_recipe(line)
 
     if recipe then
       table.insert(recipes, recipe)
     else
-      error(("Failed to parse recipe on line %d: %s"):format(i, line))
+      error(("Failed to parse recipe on line %d: %s\n\n%s"):format(i, line, err))
     end
 
     if i % 1000 == 0 then
@@ -219,19 +227,20 @@ end
 --- Parse a recipe from a string.
 ---@param line string The string to parse the recipe from.
 ---@return Recipe? recipe The recipe parsed from the string.
+---@return string? error The error message if the recipe could not be parsed.
 function RecipeHandler.parse_recipe(line)
   local recipe = textutils.unserialize(line)
 
   if not recipe then
-    return nil
+    return nil, "Failed to unserialize recipe."
   end
 
   if not recipe.result then
-    return nil
+    return nil, "No result found in recipe."
   end
 
-  if not recipe.result.name then
-    return nil
+  if not recipe.result.id then
+    return nil, "No result id found in recipe."
   end
 
   if not recipe.enabled then
@@ -247,7 +256,7 @@ function RecipeHandler.parse_recipe(line)
   end
 
   if not recipe.ingredients then
-    return nil
+    return nil, "No ingredients found in recipe."
   end
 
   if not recipe.machine then
@@ -257,8 +266,8 @@ function RecipeHandler.parse_recipe(line)
   for i = 1, #recipe.ingredients do
     local ingredient = recipe.ingredients[i]
 
-    if not ingredient.name then
-      return nil
+    if not ingredient.id then
+      return nil, ("No id found for ingredient %d in recipe."):format(i)
     end
 
     if not ingredient.amount then
@@ -273,24 +282,15 @@ function RecipeHandler.parse_recipe(line)
   return recipe --[[@as Recipe]]
 end
 
---- Parse a json style recipe from a string.
----@param json string The string to parse the recipe from.
----@return Recipe? recipe The recipe parsed from the string.
-function RecipeHandler.parse_json_recipe(json)
-  ---@FIXME implement this
-  error("Not yet implemented.", 2)
-  return {}
-end
-
 --- Insert a recipe into the recipe list.
 ---@param recipe Recipe The recipe to insert.
 function RecipeHandler.insert(recipe)
   ---@FIXME confirm the recipe is valid
   table.insert(recipes, recipe)
-  if not lookup[recipe.result.name] then
-    lookup[recipe.result.name] = {}
+  if not lookup[recipe.result.id] then
+    lookup[recipe.result.id] = {}
   end
-  table.insert(lookup[recipe.result.name], recipe)
+  table.insert(lookup[recipe.result.id], recipe)
 end
 
 --- Save the recipes to the given file.
@@ -306,7 +306,7 @@ function RecipeHandler.save()
     table.insert(lines, line)
   end
 
-  file_helper:write(SAVE_FILE, table.concat(lines, "\n"))
+  file_helper:write(RecipeHandler.SAVE_FILE, table.concat(lines, "\n"))
 end
 
 --- Build/rebuild the recipe graph.
@@ -323,11 +323,11 @@ function RecipeHandler.build_recipe_graph()
   recipe_graph = graph.new() --[[@as RecipeGraph]]
 
   -- First pass: Create all the nodes. One node for each recipe for an item.
-  for item_name, item_recipes in pairs(lookup) do
+  for item_id, item_recipes in pairs(lookup) do
     for i = 1, #item_recipes do
       local recipe = item_recipes[i]
       recipe_graph:add_node({
-        item = item_name,
+        item = item_id,
         recipe = util.deep_copy(recipe),
         needed = 0,
         crafts = 0,
@@ -345,13 +345,13 @@ function RecipeHandler.build_recipe_graph()
     if recipe then
       for j = 1, #recipe.ingredients do
         local ingredient = recipe.ingredients[j]
-        local ingredient_name = ingredient.name
-        local ingredient_nodes = recipe_graph:find_nodes(function(n) return n.value.item == ingredient_name end) --[[ @as RecipeGraphNode[] ]]
+        local ingredient_id = ingredient.id
+        local ingredient_nodes = recipe_graph:find_nodes(function(n) return n.value.item == ingredient_id end) --[[ @as RecipeGraphNode[] ]]
 
         if #ingredient_nodes == 0 then
           -- Ingredient doesn't have a recipe, create a node for it.
           local new_node = recipe_graph:add_node({
-            item = ingredient_name,
+            item = ingredient_id,
             recipe = nil,
             needed = 0,
             crafts = 0,
@@ -383,28 +383,28 @@ local function clean_crafting_plan(plan)
     local step = plan.steps[i]
     if not step then break end
 
-    if seen[step.recipe.random_id] then
+    if seen[step.recipe.id] then
       table.remove(plan.steps, i)
 
       -- We removed an entry, so we need to decrement i to land on the same
       -- position again next iteration.
       i = i - 1
     else
-      seen[step.recipe.random_id] = true
+      seen[step.recipe.id] = true
     end
   end
 end
 
 --- Get the *first* recipe available for the given item. If the item (or ingredients) have multiple recipes, it will use the first and build a crafting plan from that. This method is faster than other methods, but breaks down if there is a loop.
----@param item string The item to get the recipe for.
+---@param item integer The item id to get the recipe for.
 ---@param amount number The amount of the item to craft.
 ---@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipe for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
----@param recipe_selections table<string, Recipe>? A recipe in this lookup table will be used if crafting the item requires one of the ingredients in the list. This is useful for items which have multiple crafting recipes, as you can override which recipe that ingredient will be made with. Any item that has multiple recipes without a recipe in this list will use the first recipe that can be grabbed.
----@param item_exclusions table<string, true>? A dictionary containing any items that the user already has, and should not be included in the crafting plan.
+---@param recipe_selections table<integer, Recipe>? A recipe in this lookup table will be used if crafting the item requires one of the ingredients in the list. This is useful for items which have multiple crafting recipes, as you can override which recipe that ingredient will be made with. Any item that has multiple recipes without a recipe in this list will use the first recipe that can be grabbed.
+---@param item_exclusions table<integer, true>? A dictionary containing any items that the user already has, and should not be included in the crafting plan.
 ---@return FinalizedCraftingPlan? plan The crafting plan for the given item, or nil if no recipe was found.
 ---@return string? error The error message if no recipe was found.
 function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selections, item_exclusions)
-  expect(1, item, "string")
+  expect(1, item, "number")
   expect(2, amount, "number")
   expect(3, max_depth, "number", "nil")
   expect(4, recipe_selections, "table", "nil")
@@ -426,9 +426,9 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
 
   local recipe_selection = recipe_selections[item]
   if recipe_selection then
-    prints(0, "Recipe selection found for", item, ":", recipe_selection.result.name, "(", recipe_selection.random_id, ")")
+    prints(0, "Recipe selection found for", item, ":", recipe_selection.result.id, "(", recipe_selection.id, ")")
     -- We need to use this recipe instead of the others.
-    recipe_node = recipe_graph:find_node(function(n) return n.value.recipe.random_id == recipe_selection.random_id end) --[[@as RecipeGraphNode]]
+    recipe_node = recipe_graph:find_node(function(n) return n.value.recipe.id == recipe_selection.id end) --[[@as RecipeGraphNode]]
   else
     prints(0, "No recipe selection found for", item)
   end
@@ -476,23 +476,23 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
 
     spaces = spaces + 2
     for _, ingredient in ipairs(recipe.ingredients) do
-      local ingredient_nodes = recipe_graph:find_nodes(function(n) return n.value.item == ingredient.name end) --[[@as RecipeGraphNode[] ]]
+      local ingredient_nodes = recipe_graph:find_nodes(function(n) return n.value.item == ingredient.id end) --[[@as RecipeGraphNode[] ]]
       local ingredient_node = ingredient_nodes[1]
 
       -- Check if this ingredient has a recipe selection.
-      local selection = recipe_selections[ingredient.name]
+      local selection = recipe_selections[ingredient.id]
       if selection then
         -- We need to use this recipe instead of the others.
-        ingredient_node = recipe_graph:find_node(function(n) return n.value.recipe.random_id == selection.random_id end) --[[@as RecipeGraphNode]]
+        ingredient_node = recipe_graph:find_node(function(n) return n.value.recipe.id == selection.id end) --[[@as RecipeGraphNode]]
       else
-        recipe_selections[ingredient.name] = ingredient_node.value.recipe
+        recipe_selections[ingredient.id] = ingredient_node.value.recipe
       end
 
-      prints(spaces, "Looking at:", ingredient.name)
+      prints(spaces, "Looking at:", ingredient.id)
 
       if not ingredient_node then
         -- All ingredients should have nodes by this point
-        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient.name))
+        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient.id))
       end
 
       -- We need this many of the ingredient.
@@ -539,19 +539,19 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
     end
 
     for _, ingredient in ipairs(recipe.ingredients) do
-      local ingredient_nodes = recipe_graph:find_nodes(function(n) return n.value.item == ingredient.name end) --[[@as RecipeGraphNode]]
+      local ingredient_nodes = recipe_graph:find_nodes(function(n) return n.value.item == ingredient.id end) --[[@as RecipeGraphNode]]
       local ingredient_node = ingredient_nodes[1]
 
       -- Check if this ingredient has a recipe selection.
-      local selection = recipe_selections[ingredient.name]
+      local selection = recipe_selections[ingredient.id]
       if selection then
         -- We need to use this recipe instead of the others.
-        ingredient_node = recipe_graph:find_node(function(n) return n.value.recipe.random_id == selection.random_id end) --[[@as RecipeGraphNode]]
+        ingredient_node = recipe_graph:find_node(function(n) return n.value.recipe.id == selection.id end) --[[@as RecipeGraphNode]]
       end
 
       if not ingredient_node then
         -- All ingredients should have nodes by this point
-        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient.name))
+        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient.id))
       end
 
       if not item_exclusions[ingredient_node.value.item] then
@@ -584,14 +584,14 @@ end
 
 --- Get as many recipes as possible for the given item.
 ---@deprecated This method is not actually deprecated, but I would like a warning to show when people use it. This method *does not work*, and will error immediately.
----@param item string The item to get the recipes for.
+---@param item integer The item id to get the recipes for.
 ---@param amount number The amount of the item to craft.
 ---@param max_depth number? The maximum depth to search for recipes. If set at 1, will only return the recipe for the given item. Higher values will give you recipes for items that are ingredients in the recipes for the given item. Be warned, if you set it too high and there are loops, you may have issues. Defaults to 1.
 ---@param max_iterations number? The total maximum number of iterations to perform. For each depth decrement, this value will also decrement. If this value reaches 0, the function will stop searching for more recipes and cancel the current recipe it was building. Defaults to 100.
 ---@return FinalizedCraftingPlan[]? plans The crafting plans for the given item.
 ---@return string? error The error message if no recipe was found.
 function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
-  expect(1, item, "string")
+  expect(1, item, "number")
   expect(2, amount, "number")
   expect(3, max_depth, "number", "nil")
   expect(4, max_iterations, "number", "nil")
@@ -633,7 +633,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
 
   for i = 1, #recipe_nodes do
     prints(0, "Recipe node", i, ":", recipe_nodes[i].value.item)
-    prints(0, "Recipe node id:", recipe_nodes[i].value.recipe.random_id)
+    prints(0, "Recipe node id:", recipe_nodes[i].value.recipe.id)
   end
 
   -- Now, we step from each recipe node, into its ingredients, and calculate how
@@ -681,16 +681,16 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
     node.value.output_count = node.value.crafts * recipe.result.amount
     prints(spaces, "Output count:", node.value.output_count)
 
-    table.insert(step_list, node.value.recipe.random_id)
-    prints(spaces, "Inserted:", node.value.recipe.random_id)
+    table.insert(step_list, node.value.recipe.id)
+    prints(spaces, "Inserted:", node.value.recipe.id)
 
     for i, ingredient in ipairs(recipe.ingredients) do
-      local ingredient_nodes = current_graph:find_nodes(function(n) return n.value.item == ingredient.name end) --[[ @as RecipeGraphNode[] ]]
+      local ingredient_nodes = current_graph:find_nodes(function(n) return n.value.item == ingredient.id end) --[[ @as RecipeGraphNode[] ]]
 
       local n_nodes = #ingredient_nodes
       if n_nodes == 0 then
         -- All ingredients should have nodes by this point
-        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient.name))
+        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient.id))
       end
 
       -- for each ingredient node, split off a new graph and step through it.
@@ -722,7 +722,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
           graphs[#graphs + 1] = new_graph
 
           -- Grab the current node from the new graph
-          local new_current_node = new_graph:find_node(function(n) return n.value.recipe.random_id == node.value.recipe.random_id end) --[[@as RecipeGraphNode]]
+          local new_current_node = new_graph:find_node(function(n) return n.value.recipe.id == node.value.recipe.id end) --[[@as RecipeGraphNode]]
           new_current_node.value.crafts = old_crafts -- undo this as well
           new_current_node.value.output_count = old_crafts * recipe.result.amount -- and this
 
@@ -770,10 +770,10 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
     local step_list = {}
     step_lists[i] = step_list
 
-    local node = graphs[i]:find_node(function(n) return n.value.recipe.random_id == recipe_nodes[i].value.recipe.random_id end) --[[@as RecipeGraphNode]]
+    local node = graphs[i]:find_node(function(n) return n.value.recipe.id == recipe_nodes[i].value.recipe.id end) --[[@as RecipeGraphNode]]
 
     prints(0, "Starting through", node.value.item)
-    prints(0, "Random id:", node.value.recipe.random_id)
+    prints(0, "Random id:", node.value.recipe.id)
 
     step(
       node,
@@ -797,7 +797,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
   local function build_plan(crafting_plan, current_graph, step_list, step_i, depth)
     -- Get the current step's node.
     local ingredient_node = current_graph:find_node(function(n)
-      return n.value.recipe and n.value.recipe.random_id == step_list[step_i]
+      return n.value.recipe and n.value.recipe.id == step_list[step_i]
     end) --[[@as RecipeGraphNode]]
     if ingredient_node then
       prints(0, "Found ingredient node")
@@ -824,7 +824,7 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
 
       if not ingredient_node then
         -- All ingredients should have nodes by this point
-        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient_node.value.name))
+        error(("Ingredient node not found for %s. This is likely a bug, please report it and include your recipe list."):format(ingredient_node.value.id))
       end
 
       -- Now that we've stepped through the ingredients, add this recipe to the
@@ -903,18 +903,41 @@ function RecipeHandler.get_all_recipes(item, amount, max_depth, max_iterations)
 end
 
 --- Create a new recipe for the given item, but do not insert it into the recipe list.
----@param item string The item to create the recipe for.
+---@param item_name string The name of the item to create the recipe for.
 ---@param output_count number The amount of the item that are outputted by the recipe.
 ---@param ingredients RecipeIngredient[] The ingredients required to craft the item.
 ---@param machine integer? The machine used to craft the item. Defaults to "crafting table".
 ---@param is_fluid boolean? Whether or not the item is a fluid. Defaults to false.
 ---@param is_preferred boolean? Whether or not the recipe is preferred. Defaults to false.
+---@param previous_name string? The previous name of the item, if editing an existing recipe.
 ---@return Recipe recipe The recipe created.
-function RecipeHandler.create_recipe_object(item, output_count, ingredients, machine, is_fluid, is_preferred)
+function RecipeHandler.create_recipe_object(item_name, output_count, ingredients, machine, is_fluid, is_preferred, previous_name)
+  -- Check items_common for the item id. If it doesn't exist, add it.
+  local item_id = items_common.get_item_id(item_name)
+
+  if previous_name and not item_id then
+    -- The item id doesn't exist, but we have a previous name. This means the
+    -- item was renamed, so we need to get the id from the previous name.
+    item_id = items_common.get_item_id(previous_name)
+
+  if not item_id then
+      -- The previous name doesn't exist, this is an error.
+      error(("Previous name %s does not exist."):format(previous_name), 2)
+    end
+
+    -- We need to update the item name in items_common.
+    items_common.edit_item(item_id, item_name)
+  elseif not previous_name and not item_id then
+    -- The item id doesn't exist, and we don't have a previous name. This means
+    -- the item is new, so we need to add it.
+    item_id = items_common.add_item(item_name)
+  end
+  ---@cast item_id integer It can no longer be nil after the above.
+
   ---@type Recipe
   return {
     result = {
-      name = item,
+      id = item_id,
       amount = output_count,
       fluid = not not is_fluid
     },
@@ -922,24 +945,30 @@ function RecipeHandler.create_recipe_object(item, output_count, ingredients, mac
     machine = machine or 0,
     enabled = true,
     preferred = not not is_preferred,
-    random_id = math.random(-999999999, 999999999) -- probably enough, considering this isn't meant to house every recipe ever
+    id = generate_unique_id()
   }
 end
 
 --- Create a new recipe for the given item.
----@param item string The item to create the recipe for.
+---@param item_name string The item name to create the recipe for.
 ---@param output_count number The amount of the item that are outputted by the recipe.
 ---@param ingredients RecipeIngredient[] The ingredients required to craft the item.
 ---@param machine integer? The machine used to craft the item. Defaults to "crafting table".
 ---@param is_fluid boolean? Whether or not the item is a fluid. Defaults to false.
 ---@return Recipe recipe The recipe created.
-function RecipeHandler.create_recipe(item, output_count, ingredients, machine, is_fluid)
+function RecipeHandler.create_recipe(item_name, output_count, ingredients, machine, is_fluid)
+  -- Check items_common for the item id. If it doesn't exist, add it.
+  local item_id = items_common.get_item_id(item_name)
+  if not item_id then
+    item_id = items_common.add_item(item_name)
+  end
+
   ---@type Recipe
-  local recipe = RecipeHandler.create_recipe_object(item, output_count, ingredients, machine, is_fluid)
+  local recipe = RecipeHandler.create_recipe_object(item_name, output_count, ingredients, machine, is_fluid)
 
   table.insert(recipes, recipe)
-  lookup[item] = lookup[item] or {}
-  table.insert(lookup[item], recipe)
+  lookup[item_id] = lookup[item_id] or {}
+  table.insert(lookup[item_id], recipe)
 
   return recipe
 end
@@ -950,6 +979,9 @@ end
 ---@return string[] text The text representation of the crafting plan, where each line represents a step in the plan.
 function RecipeHandler.get_plan_as_text(plan, plan_number)
   local textual = {} ---@type string[]
+
+  -- Get the lookup of item ids to names
+  local item_lookup = items_common.get_items()
 
   table.insert(textual, "===============")
   table.insert(textual, ("Crafting plan #%d raw material cost:"):format(plan_number or 1))
@@ -962,7 +994,7 @@ function RecipeHandler.get_plan_as_text(plan, plan_number)
   table.sort(raw_materials, function(a, b) return a[1] < b[1] end)
 
   for _, data in ipairs(raw_materials) do
-    table.insert(textual, ("  %s: %d"):format(data[1], data[2]))
+    table.insert(textual, ("  %s: %d"):format(item_lookup[data[1]] and item_lookup[data[1]].name or "Unknown Item", data[2]))
   end
   table.insert(textual, "===============")
 
@@ -981,7 +1013,7 @@ function RecipeHandler.get_plan_as_text(plan, plan_number)
       end
       table.insert(ingredient_textual, ingredient_formatter:format(
         ingredient.amount * step.crafts,
-        ingredient.name,
+        item_lookup[ingredient.id] and item_lookup[ingredient.id].name or "Unknown Item",
         ingredient.amount * step.crafts > 1 and "s" or "",
         ingredient.fluid and " (fluid)" or ""
       ))
@@ -992,9 +1024,9 @@ function RecipeHandler.get_plan_as_text(plan, plan_number)
     end
 
     local line = line_formatter:format(
-      machines_common.machines[step.recipe.machine].name,
+      machines_common.machines[step.recipe.machine] and machines_common.machines[step.recipe.machine].name or "Unknown Machine",
       step.output_count,
-      step.recipe.result.name,
+      item_lookup[step.recipe.result.id] and item_lookup[step.recipe.result.id].name or "Unknown Item",
       step.output_count > 1 and "s" or "",
       table.concat(ingredient_textual)
     )
@@ -1013,13 +1045,13 @@ function RecipeHandler.get_raw_material_cost(plan)
 
   for _, step in ipairs(plan.steps) do
     for _, ingredient in ipairs(step.recipe.ingredients) do
-      if not lookup[ingredient.name] then
+      if not lookup[ingredient.id] then
         -- This is a raw material, so add it to the cost.
-        if not cost[ingredient.name] then
-          cost[ingredient.name] = 0
+        if not cost[ingredient.id] then
+          cost[ingredient.id] = 0
         end
 
-        cost[ingredient.name] = cost[ingredient.name] + (ingredient.amount * step.crafts)
+        cost[ingredient.id] = cost[ingredient.id] + (ingredient.amount * step.crafts)
       end
     end
   end
@@ -1028,7 +1060,7 @@ function RecipeHandler.get_raw_material_cost(plan)
 end
 
 --- Get the recipes for the given item.
----@param item string The item to get the recipes for.
+---@param item integer The item to get the recipes for.
 ---@return Recipe[]? recipes The recipes for the given item. Nil if nothing.
 function RecipeHandler.get_recipes(item)
   return util.deep_copy(lookup[item])
@@ -1041,51 +1073,47 @@ function RecipeHandler.get_lookup()
 end
 
 --- Get a list of all the items that have recipes.
----@return string[] items The list of items that have recipes.
+---@return integer[] items The list of items that have recipes.
 function RecipeHandler.get_items()
-  local items = {} ---@type string[]
+  local items = {} ---@type integer[]
 
-  for item_name in pairs(lookup) do
-    table.insert(items, item_name)
+  for item_id in pairs(lookup) do
+    table.insert(items, item_id)
   end
-
-  table.sort(items) -- sort alphabetically
 
   return items
 end
 
 --- Get a combined list of all items that have recipes and all items that are ingredients in recipes.
----@return string[] items The list of items that have recipes or are ingredients in recipes.
+---@return integer[] items The list of items that have recipes or are ingredients in recipes.
 function RecipeHandler.get_all_items()
-  local items = {} ---@type string[]
+  local items = {} ---@type integer[]
 
-  local deduplicate = {} ---@type table<string, boolean>
+  local deduplicate = {} ---@type table<integer, boolean>
 
-  for item_name in pairs(lookup) do
-    table.insert(items, item_name)
-    deduplicate[item_name] = true
+  for item_id in pairs(lookup) do
+    table.insert(items, item_id)
+    deduplicate[item_id] = true
   end
 
   for _, recipe in ipairs(recipes) do
     for _, ingredient in ipairs(recipe.ingredients) do
-      if not deduplicate[ingredient.name] then
-        table.insert(items, ingredient.name)
-        deduplicate[ingredient.name] = true
+      if not deduplicate[ingredient.id] then
+        table.insert(items, ingredient.id)
+        deduplicate[ingredient.id] = true
       end
     end
   end
-
-  table.sort(items) -- sort alphabetically
 
   return items
 end
 
 -- Get a list of items that are needed to craft the given item.
 ---@param plan CraftingPlan The crafting plan to get the items for.
----@return string[] items The list of items that are needed to craft the given item.
+---@return integer[] items The list of items that are needed to craft the given item.
 function RecipeHandler.get_needed_items(plan)
-  local items = {} ---@type string[]
-  local item_set = {} ---@type table<string, boolean>
+  local items = {} ---@type integer[]
+  local item_set = {} ---@type table<integer, boolean>
 
   for _, step in ipairs(plan.steps) do
     -- Only add it if we haven't already added it, and if it's not a raw material.
@@ -1096,28 +1124,23 @@ function RecipeHandler.get_needed_items(plan)
 
     for _, ingredient in ipairs(step.recipe.ingredients) do
       -- Only add it if we haven't already added it, and if it's not a raw material.
-      if not item_set[ingredient.name] and lookup[ingredient.name] then
-        table.insert(items, ingredient.name)
-        item_set[ingredient.name] = true
+      if not item_set[ingredient.id] and lookup[ingredient.id] then
+        table.insert(items, ingredient.id)
+        item_set[ingredient.id] = true
       end
     end
   end
 
-  table.sort(items) -- sort alphabetically
-
   return items
 end
 
---- Get a recipe via its name and id
----@param name string The name of the recipe to get.
----@param id number The random id of the recipe to get.
+--- Get a recipe via its id.
+---@param id number The id of the recipe to get.
 ---@return Recipe? recipe The recipe, or nil if not found.
-function RecipeHandler.get_recipe(name, id)
-  local item_recipes = lookup[name]
-
-  for i = 1, #item_recipes do
-    local recipe = item_recipes[i]
-    if recipe.random_id == id then
+function RecipeHandler.get_recipe(id)
+  for i = 1, #recipes do
+    local recipe = recipes[i]
+    if recipe.id == id then
       return util.deep_copy(recipe)
     end
   end
@@ -1125,16 +1148,13 @@ function RecipeHandler.get_recipe(name, id)
   return nil
 end
 
---- Edit data for a given recipe
----@param name string The name of the recipe to edit.
----@param id number The random id of the recipe to edit.
----@param data table The new data for the recipe, random ID will be ignored, so you can use RecipeHandler.create_recipe_object to create the data. Anything missing will remain unchanged.
-function RecipeHandler.edit_recipe(name, id, data)
-  local item_recipes = lookup[name]
-
-  for i = 1, #item_recipes do
-    local recipe = item_recipes[i]
-    if recipe.random_id == id then
+--- Edit data for a given recipe.
+---@param id number The id of the recipe to edit.
+---@param data table The new data for the recipe, ID will be ignored, so you can use RecipeHandler.create_recipe_object to create the data. Anything missing will remain unchanged.
+function RecipeHandler.edit_recipe(id, data)
+  for i = 1, #recipes do
+    local recipe = recipes[i]
+    if recipe.id == id then
       local preferred = recipe.preferred
       if data.preferred ~= nil then -- my brain isnt braining right now so this is an if statement instead of an or
         preferred = data.preferred
@@ -1149,41 +1169,41 @@ function RecipeHandler.edit_recipe(name, id, data)
     end
   end
 
-  error(("No recipe found for %s with id %d"):format(name, id))
+  error(("No recipe found with id %d"):format(id), 2)
 end
 
---- Remove a recipe by its name and id
----@param name string The name of the recipe to remove.
----@param id number The random id of the recipe to remove.
-function RecipeHandler.remove_recipe(name, id)
-  local item_recipes = lookup[name]
+--- Remove a recipe by its id.
+---@param id number The id of the recipe to remove.
+function RecipeHandler.remove_recipe(id)
+  local s1, s2 = false, false
+  -- Find the recipe in the main list and remove it.
+  for i = 1, #recipes do
+    local recipe = recipes[i]
+    if recipe.id == id then
+      table.remove(recipes, i)
+      s1 = true
+      break
+    end
+  end
 
-  if item_recipes then
-    -- Find the recipe in the lookup and remove it.
+  -- Find the recipe in the lookup and remove it.
+  for _, item_recipes in pairs(lookup) do
     for i = 1, #item_recipes do
       local recipe = item_recipes[i]
-      if recipe.random_id == id then
+      if recipe.id == id then
         table.remove(item_recipes, i)
-        break
-      end
-    end
-
-    -- Find the recipe in the recipes list and remove it.
-    for i = 1, #recipes do
-      local recipe = recipes[i]
-      if recipe.result.name == name and recipe.random_id == id then
-        table.remove(recipes, i)
+        s2 = true
         return
       end
     end
   end
 
-  error(("No recipe found for %s with id %d"):format(name, id))
+  error(("No recipe found for item with id %d (%s|%s)"):format(id, s1, s2), 2)
 end
 
 --- Copy the save file to a backup.
 function RecipeHandler.backup_save()
-  file_helper:write(SAVE_FILE .. ".bak", file_helper:get_all(SAVE_FILE))
+  file_helper:write(RecipeHandler.BACKUP_FILE, file_helper:get_all(RecipeHandler.SAVE_FILE))
 end
 
 return RecipeHandler
