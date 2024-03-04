@@ -1064,8 +1064,6 @@ function RecipeHandler.get_items()
     table.insert(items, item_id)
   end
 
-  table.sort(items) -- sort alphabetically
-
   return items
 end
 
@@ -1089,8 +1087,6 @@ function RecipeHandler.get_all_items()
       end
     end
   end
-
-  table.sort(items) -- sort alphabetically
 
   return items
 end
@@ -1117,8 +1113,6 @@ function RecipeHandler.get_needed_items(plan)
       end
     end
   end
-
-  table.sort(items) -- sort alphabetically
 
   return items
 end
