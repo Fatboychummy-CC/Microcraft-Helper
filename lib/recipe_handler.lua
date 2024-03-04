@@ -203,12 +203,12 @@ function RecipeHandler.load()
 
   for i = 1, lines.n do
     local line = lines[i]
-    local recipe = RecipeHandler.parse_recipe(line)
+    local recipe, err = RecipeHandler.parse_recipe(line)
 
     if recipe then
       table.insert(recipes, recipe)
     else
-      error(("Failed to parse recipe on line %d: %s"):format(i, line))
+      error(("Failed to parse recipe on line %d: %s\n\n%s"):format(i, line, err))
     end
 
     if i % 1000 == 0 then
@@ -226,19 +226,20 @@ end
 --- Parse a recipe from a string.
 ---@param line string The string to parse the recipe from.
 ---@return Recipe? recipe The recipe parsed from the string.
+---@return string? error The error message if the recipe could not be parsed.
 function RecipeHandler.parse_recipe(line)
   local recipe = textutils.unserialize(line)
 
   if not recipe then
-    return nil
+    return nil, "Failed to unserialize recipe."
   end
 
   if not recipe.result then
-    return nil
+    return nil, "No result found in recipe."
   end
 
   if not recipe.result.id then
-    return nil
+    return nil, "No result id found in recipe."
   end
 
   if not recipe.enabled then
@@ -254,7 +255,7 @@ function RecipeHandler.parse_recipe(line)
   end
 
   if not recipe.ingredients then
-    return nil
+    return nil, "No ingredients found in recipe."
   end
 
   if not recipe.machine then
@@ -265,7 +266,7 @@ function RecipeHandler.parse_recipe(line)
     local ingredient = recipe.ingredients[i]
 
     if not ingredient.id then
-      return nil
+      return nil, ("No id found for ingredient %d in recipe."):format(i)
     end
 
     if not ingredient.amount then
