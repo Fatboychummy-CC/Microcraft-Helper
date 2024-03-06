@@ -1,8 +1,9 @@
 local recipe_handler = require "recipe_handler"
+local items_common = require "ui.items.common"
+local machines_common = require "ui.machines.common"
 
 local search = require "ui.util.search"
 local good_response = require "ui.util.good_response"
-local items_common = require "ui.items.common"
 
 --- Item preference menu -> Show items with multiple recipes, then select one to be preferred.
 ---@param run_menu fun(name: string) The function to run another menu
@@ -54,7 +55,11 @@ return function(run_menu)
   local recipe_names = {}
 
   for _, item_recipe in pairs(item_recipes) do
-    table.insert(recipe_names, ("%s (%s)"):format(item_name, item_recipe.id))
+    table.insert(recipe_names, ("%s (%s : %s)"):format(
+      item_name,
+      machines_common.machines[item_recipe.machine] and machines_common.machines[item_recipe.machine].name or "Unknown",
+      item_recipe.id
+    ))
   end
 
   -- Sort the recipe names
@@ -66,7 +71,7 @@ return function(run_menu)
   if not recipe then return end
 
   -- Get the item name and recipe ID from the recipe name
-  local result_item_name, recipe_id = recipe:match("^(.+) %((.-)%)$")
+  local result_item_name, recipe_id = recipe:match("^(.+) %(.+ : (.-)%)$")
   recipe_id = tonumber(recipe_id)
 
   if not recipe_id then
