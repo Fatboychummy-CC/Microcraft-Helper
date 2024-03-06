@@ -35,7 +35,7 @@ return function(title, options, go_back, go_back_top, go_back_text)
       end
     end
 
-    if height > 6 then height = 6 end
+    if height > 14 then height = 14 end
 
     -- Set up the page.
     PrimeUI.clear()
