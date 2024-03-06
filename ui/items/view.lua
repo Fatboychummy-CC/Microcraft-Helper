@@ -1,6 +1,6 @@
 local recipe_handler = require "recipe_handler"
-local machines_common = require "ui.machines.common"
 local items_common = require "ui.items.common"
+local machines_common = require "ui.machines.common"
 
 local good_response = require "ui.util.good_response"
 local search = require "ui.util.search"
@@ -23,8 +23,12 @@ return function(run_menu)
     end
 
     if recipes then
-      for _, recipe in pairs(recipes) do
-        table.insert(recipe_names, ("%s (%s)"):format(item_name, recipe.id))
+      for _, item_recipe in pairs(recipes) do
+        table.insert(recipe_names, ("%s (%s : %s)"):format(
+          item_name,
+          machines_common.machines[item_recipe.machine] and machines_common.machines[item_recipe.machine].name or "Unknown",
+          item_recipe.id
+        ))
       end
     end
   end
@@ -40,7 +44,7 @@ return function(run_menu)
 
     if recipe then
       -- Get the item name and recipe ID from the recipe name
-      local item_name, recipe_id = recipe:match("^(.+) %((.-)%)$")
+      local item_name, recipe_id = recipe:match("^(.+) %(.+ : (.-)%)$")
       recipe_id = tonumber(recipe_id)
 
       if not recipe_id then
