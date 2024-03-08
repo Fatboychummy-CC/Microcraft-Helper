@@ -48,14 +48,14 @@ return function(run_menu)
       recipe_id = tonumber(recipe_id)
 
       if not recipe_id then
-        error("You somehow managed to get a recipe ID that is not a number. How did you do that?", 0)
+        error(("Recipe ID for recipe %s does not exist."):format(recipe), 0)
       end
 
       -- Get the recipe data
       local recipe_data = recipe_handler.get_recipe(recipe_id)
 
       if not recipe_data then
-        error("Between then and now how THE HECK DOES IT NOT EXIST?????????", 0)
+        error(("Recipe data for recipe id %d does not exist."):format(recipe_id), 0)
       end
 
       local ingredients_text = {}
