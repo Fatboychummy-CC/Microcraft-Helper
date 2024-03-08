@@ -49,10 +49,10 @@ return function(item_data, default_item_search_name)
 
   new_data.ingredients = {} -- clear ingredients, since we're going to be adding them manually
 
-  local item_id_list = recipe_handler.get_items()
+  local item_ids = items_common.get_items()
   local item_name_list = {}
 
-  for _, item_id in pairs(item_id_list) do
+  for item_id in pairs(item_ids) do
     local item_name = items_common.get_item_name(item_id)
 
     if not item_name then
