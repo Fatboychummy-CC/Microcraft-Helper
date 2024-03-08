@@ -121,7 +121,8 @@ return function(item_data, default_item_search_name)
     local ingredient_id = items_common.get_item_id(ingredient_name)
 
     if not ingredient_id then
-      error(("Item ID for item %s does not exist."):format(ingredient_name), 0)
+      -- Ingredient item not created yet, we need to create it.
+      ingredient_id = items_common.add_item(ingredient_name)
     end
 
     table.insert(ingredients, {
