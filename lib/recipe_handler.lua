@@ -372,6 +372,7 @@ function RecipeHandler.build_recipe_graph()
 end
 
 --- Clean up a crafting plan by removing duplicate entries. Modifies in-place.
+--- Also clean up any "Craft 0 of x item" entries.
 ---@param plan CraftingPlan The crafting plan to clean up.
 local function clean_crafting_plan(plan)
   local seen = {}
@@ -383,7 +384,7 @@ local function clean_crafting_plan(plan)
     local step = plan.steps[i]
     if not step then break end
 
-    if seen[step.recipe.id] then
+    if seen[step.recipe.id] or step.needed == 0 then
       table.remove(plan.steps, i)
 
       -- We removed an entry, so we need to decrement i to land on the same
