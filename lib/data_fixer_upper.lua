@@ -399,6 +399,7 @@ function fixer_upper.check()
     print("Backing up save files...")
     machines_common.backup_save()
     recipe_handler.backup_save()
+    items_common.backup_save()
 
     for check_name, fixer in pairs(fixes) do
       if results[check_name] then
