@@ -194,8 +194,22 @@ end
 ---@class RecipeHandler
 local RecipeHandler = {
   SAVE_FILE = "recipes.list",
-  BACKUP_FILE = "recipes.list.bak"
+  BACKUP_FILE = "recipes.list.bak",
+  MIN_ID = -1000000,
+  MAX_ID = 1000000
 }
+
+--- Generate a unique id for a recipe.
+---@return integer id The unique id.
+local function generate_unique_id()
+  local id
+
+  repeat
+    id = math.random(RecipeHandler.MIN_ID, RecipeHandler.MAX_ID)
+  until not lookup[id]
+
+  return id
+end
 
 --- Load the recipes from the given file. WARNING: This wipes the currently loaded recipe list first, then loads the recipes.
 function RecipeHandler.load()
@@ -483,13 +497,22 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
       -- Check if this ingredient has a recipe selection.
       local selection = recipe_selections[ingredient.id]
       if selection then
+        prints(spaces, "Recipe selection found for", ingredient.id, ":", selection.result.id, "(", selection.id, ")")
         -- We need to use this recipe instead of the others.
         ingredient_node = recipe_graph:find_node(function(n) return n.value.recipe.id == selection.id end) --[[@as RecipeGraphNode]]
+        prints(spaces, "Getting item id", ingredient_node.value.item, "from selection")
       else
+        prints(spaces, "No recipe selection found for", ingredient.id)
         recipe_selections[ingredient.id] = ingredient_node.value.recipe
+        prints(spaces, "Setting recipe selection for", ingredient.id, "to", ingredient_node.value.item, "(", ingredient_node.value.recipe and ingredient_node.value.recipe.id or "No recipe", ")")
+        prints(spaces, "Getting item id", ingredient_node.value.item, "from node")
       end
 
       prints(spaces, "Looking at:", ingredient.id)
+
+      if ingredient.id ~= ingredient_node.value.item then
+        prints(spaces, "############################################### Ingredient id mismatch:", ingredient.id, ingredient_node.value.item)
+      end
 
       if not ingredient_node then
         -- All ingredients should have nodes by this point
@@ -579,6 +602,11 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
 
   -- Finalize the crafting plan by adding raw material costs.
   crafting_plan.raw_material_cost = RecipeHandler.get_raw_material_cost(crafting_plan)
+
+  if _DEBUG then
+    prints(0, "Waiting for enter press")
+    repeat local _, key = os.pullEvent("key") until key == keys.enter
+  end
 
   return crafting_plan
 end
