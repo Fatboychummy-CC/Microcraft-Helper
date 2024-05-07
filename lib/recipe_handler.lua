@@ -97,18 +97,6 @@ local lookup = {}
 ---@type RecipeGraph
 local recipe_graph = graph.new() --[[@as RecipeGraph]]
 
---- Generate a unique id for a recipe.
----@return integer id The unique id.
-local function generate_unique_id()
-  local id
-
-  repeat
-    id = math.random(-1000000, 1000000)
-  until not lookup[id]
-
-  return id
-end
-
 --- Create a smaller version of a recipe list with unneeded data removed (things like `fluid = false` can be nil, so it isn't included in the output data).
 ---@return table recipes The ensmallified list of recipes.
 local function ensmallify()
