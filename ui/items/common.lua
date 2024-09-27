@@ -7,6 +7,7 @@
 ---@class item_data An item and its associated data.
 ---@field name string The name of the item.
 ---@field id integer The unique identifier of the item.
+---@field ignored boolean? Whether the item is ignored in final item counts.
 
 --------------------------------------------------------------------------------
 --                    End Language Server Type Definitions                    --
@@ -50,9 +51,13 @@ end
 
 --- Edit an item in the list of items.
 ---@param id integer The unique id of the item.
----@param name string The new name of the item.
-function common.edit_item(id, name)
-  common.item_lookup[id].name = name
+---@param name string? The new name of the item, if it is being changed.
+---@param ignored boolean? If true, if false the item will not be ignored. If nil, it will remain unchanged.
+function common.edit_item(id, name, ignored)
+  common.item_lookup[id].name = name or common.item_lookup[id].name
+  if type(ignored) == "boolean" then
+    common.item_lookup[id].ignored = ignored
+  end
   common.save()
 end
 

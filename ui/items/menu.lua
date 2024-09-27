@@ -33,6 +33,13 @@ return function(run_menu)
       end
     },
     {
+      name = "Raw Exclusions",
+      description = "Edit which items are excluded from the raw material final count.",
+      action = function()
+        run_menu("items.final_count_exclusions")
+      end
+    },
+    {
       name = "Remove Item",
       description = "Remove a recipe.",
       action = function()

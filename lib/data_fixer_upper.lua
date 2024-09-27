@@ -251,6 +251,58 @@ function fixes.item_data_not_generated()
   items_common.save()
 end
 
+--- Fix having duplicate recipe IDs.
+function fixes.duplicate_recipe_ids()
+  -- Search through the recipes list to see if any duplicate IDs exist.
+  -- We can just change the recipe's id to another id.
+
+  -- Manually load the data from the file.
+  local lines = file_helper:get_lines(recipe_handler.SAVE_FILE)
+  local recipes = {} ---@type Recipe[]
+
+  for _, line in ipairs(lines) do
+    local recipe = textutils.unserialize(line) --[[@as Recipe?]]
+    table.insert(recipes, recipe)
+  end
+
+  local seen_ids = {}
+  local fixed_ids = 0
+
+  for _, recipe in ipairs(recipes) do
+    if seen_ids[recipe.id] then
+      -- Fix needed.
+
+      -- Generate random IDs until we have an ID that works.
+      local id
+      repeat
+        id = math.random(recipe_handler.MIN_ID, recipe_handler.MAX_ID)
+      until not seen_ids[id]
+
+      print("  ID", recipe.id, "changed to", id)
+
+      recipe.id = id
+      fixed_ids = fixed_ids + 1
+      seen_ids[recipe.id] = true
+    else
+      seen_ids[recipe.id] = true
+    end
+  end
+
+  -- Rewrite the recipes file.
+  local data = {}
+
+  for i, recipe in ipairs(recipes) do
+    data[i] = textutils.serialize(recipe, {compact=true})
+  end
+
+  if fixed_ids > 0 then
+    print()
+  end
+  print("Fixed", fixed_ids, "recipe(s).")
+
+  file_helper:write(recipe_handler.SAVE_FILE, table.concat(data, "\n"))
+end
+
 local checks = {}
 
 function checks.duplicate_machine_names()
@@ -287,7 +339,7 @@ end
 
 --- Check if item data is not generated.
 function checks.item_data_not_generated()
-    -- Search all recipes for items that don't have data.
+  -- Search all recipes for items that don't have data.
   -- We are looking for the following:
   -- 1. recipe.id is nil
   -- 1. a) recipe.random_id exists
@@ -325,6 +377,33 @@ function checks.item_data_not_generated()
       if not ingredient.id or ingredient.name then
         return true
       end
+    end
+  end
+
+  return false
+end
+
+--- Check if there are duplicate recipe IDs.
+function checks.duplicate_recipe_ids()
+  -- Search through the recipes list to see if any duplicate IDs exist.
+
+  -- Manually load the data from the file.
+  local lines = file_helper:get_lines(recipe_handler.SAVE_FILE)
+  local recipes = {} ---@type Recipe[]
+
+  for _, line in ipairs(lines) do
+    local recipe = textutils.unserialize(line) --[[@as Recipe?]]
+    table.insert(recipes, recipe)
+  end
+
+  local seen_ids = {}
+
+  for _, recipe in ipairs(recipes) do
+    if seen_ids[recipe.id] then
+      -- fix needed
+      return true
+    else
+      seen_ids[recipe.id] = true
     end
   end
 
@@ -399,6 +478,7 @@ function fixer_upper.check()
     print("Backing up save files...")
     machines_common.backup_save()
     recipe_handler.backup_save()
+    items_common.backup_save()
 
     for check_name, fixer in pairs(fixes) do
       if results[check_name] then

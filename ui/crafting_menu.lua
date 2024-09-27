@@ -113,19 +113,39 @@ return function(run_menu)
 
           if key_pressed == keys.one then
             sleep() -- Clear the event queue, so we don't get a key press from the previous menu.
-            local needed_items = recipe_handler.get_needed_items(plan)
+            local needed_item_ids = recipe_handler.get_needed_items(plan)
 
             -- Remove the main item from the list of needed items.
-            for i, needed_item in ipairs(needed_items) do
-              if needed_item == item_name then
-                table.remove(needed_items, i)
+            for i, needed_item_id in ipairs(needed_item_ids) do
+              if needed_item_id == item_id then
+                table.remove(needed_item_ids, i)
                 break
               end
             end
 
-            local exclusion = search("Select item to remove/re-add.", needed_items)
+            -- Get the needed items as a list of strings.
+            local needed_item_names = {}
+            for i, needed_item_id in ipairs(needed_item_ids) do
+              needed_item_names[i] = items_common.get_item_name(needed_item_id)
+
+              if not needed_item_names[i] then
+                error(("Item name for item ID %d does not exist."):format(needed_item_id), 0)
+              end
+            end
+
+            -- sort the exclusion list
+            table.sort(needed_item_names)
+
+            local exclusion = search("Select item to remove/re-add.", needed_item_names)
             if exclusion then
-              exclusions[exclusion] = not exclusions[exclusion]
+              -- Determine the item id of the selected item.
+              local exclusion_id = items_common.get_item_id(exclusion)
+
+              if not exclusion_id then
+                error(("Item ID for item %s does not exist."):format(exclusion), 0)
+              end
+
+              exclusions[exclusion_id] = not exclusions[exclusion_id]
             end
           end
         else

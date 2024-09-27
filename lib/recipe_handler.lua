@@ -97,18 +97,6 @@ local lookup = {}
 ---@type RecipeGraph
 local recipe_graph = graph.new() --[[@as RecipeGraph]]
 
---- Generate a unique id for a recipe.
----@return integer id The unique id.
-local function generate_unique_id()
-  local id
-
-  repeat
-    id = math.random(-1000000, 1000000)
-  until not lookup[id]
-
-  return id
-end
-
 --- Create a smaller version of a recipe list with unneeded data removed (things like `fluid = false` can be nil, so it isn't included in the output data).
 ---@return table recipes The ensmallified list of recipes.
 local function ensmallify()
@@ -194,8 +182,22 @@ end
 ---@class RecipeHandler
 local RecipeHandler = {
   SAVE_FILE = "recipes.list",
-  BACKUP_FILE = "recipes.list.bak"
+  BACKUP_FILE = "recipes.list.bak",
+  MIN_ID = -1000000,
+  MAX_ID = 1000000
 }
+
+--- Generate a unique id for a recipe.
+---@return integer id The unique id.
+local function generate_unique_id()
+  local id
+
+  repeat
+    id = math.random(RecipeHandler.MIN_ID, RecipeHandler.MAX_ID)
+  until not lookup[id]
+
+  return id
+end
 
 --- Load the recipes from the given file. WARNING: This wipes the currently loaded recipe list first, then loads the recipes.
 function RecipeHandler.load()
@@ -372,6 +374,7 @@ function RecipeHandler.build_recipe_graph()
 end
 
 --- Clean up a crafting plan by removing duplicate entries. Modifies in-place.
+--- Also clean up any "Craft 0 of x item" entries.
 ---@param plan CraftingPlan The crafting plan to clean up.
 local function clean_crafting_plan(plan)
   local seen = {}
@@ -383,7 +386,7 @@ local function clean_crafting_plan(plan)
     local step = plan.steps[i]
     if not step then break end
 
-    if seen[step.recipe.id] then
+    if seen[step.recipe.id] or step.needed == 0 then
       table.remove(plan.steps, i)
 
       -- We removed an entry, so we need to decrement i to land on the same
@@ -482,13 +485,22 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
       -- Check if this ingredient has a recipe selection.
       local selection = recipe_selections[ingredient.id]
       if selection then
+        prints(spaces, "Recipe selection found for", ingredient.id, ":", selection.result.id, "(", selection.id, ")")
         -- We need to use this recipe instead of the others.
         ingredient_node = recipe_graph:find_node(function(n) return n.value.recipe.id == selection.id end) --[[@as RecipeGraphNode]]
+        prints(spaces, "Getting item id", ingredient_node.value.item, "from selection")
       else
+        prints(spaces, "No recipe selection found for", ingredient.id)
         recipe_selections[ingredient.id] = ingredient_node.value.recipe
+        prints(spaces, "Setting recipe selection for", ingredient.id, "to", ingredient_node.value.item, "(", ingredient_node.value.recipe and ingredient_node.value.recipe.id or "No recipe", ")")
+        prints(spaces, "Getting item id", ingredient_node.value.item, "from node")
       end
 
       prints(spaces, "Looking at:", ingredient.id)
+
+      if ingredient.id ~= ingredient_node.value.item then
+        prints(spaces, "############################################### Ingredient id mismatch:", ingredient.id, ingredient_node.value.item)
+      end
 
       if not ingredient_node then
         -- All ingredients should have nodes by this point
@@ -578,6 +590,11 @@ function RecipeHandler.get_first_recipe(item, amount, max_depth, recipe_selectio
 
   -- Finalize the crafting plan by adding raw material costs.
   crafting_plan.raw_material_cost = RecipeHandler.get_raw_material_cost(crafting_plan)
+
+  if _DEBUG then
+    prints(0, "Waiting for enter press")
+    repeat local _, key = os.pullEvent("key") until key == keys.enter
+  end
 
   return crafting_plan
 end
@@ -920,7 +937,7 @@ function RecipeHandler.create_recipe_object(item_name, output_count, ingredients
     -- item was renamed, so we need to get the id from the previous name.
     item_id = items_common.get_item_id(previous_name)
 
-  if not item_id then
+    if not item_id then
       -- The previous name doesn't exist, this is an error.
       error(("Previous name %s does not exist."):format(previous_name), 2)
     end
@@ -1043,15 +1060,25 @@ end
 function RecipeHandler.get_raw_material_cost(plan)
   local cost = {} ---@type MaterialCost
 
+  -- Get the list of all item data
+  local item_data = items_common.get_items()
+
   for _, step in ipairs(plan.steps) do
     for _, ingredient in ipairs(step.recipe.ingredients) do
       if not lookup[ingredient.id] then
-        -- This is a raw material, so add it to the cost.
-        if not cost[ingredient.id] then
-          cost[ingredient.id] = 0
+
+        if not item_data[ingredient.id] then
+          error(("Item with id %d not found."):format(ingredient.id))
         end
 
-        cost[ingredient.id] = cost[ingredient.id] + (ingredient.amount * step.crafts)
+        if not item_data[ingredient.id].ignored then
+          -- This is a raw material and is not ignored, so add it to the cost.
+          if not cost[ingredient.id] then
+            cost[ingredient.id] = 0
+          end
+
+          cost[ingredient.id] = cost[ingredient.id] + (ingredient.amount * step.crafts)
+        end
       end
     end
   end
@@ -1102,6 +1129,20 @@ function RecipeHandler.get_all_items()
         table.insert(items, ingredient.id)
         deduplicate[ingredient.id] = true
       end
+    end
+  end
+
+  return items
+end
+
+--- Get a list of uncraftable items (items that do not have a recipe).
+---@return integer[] items The list of items that do not have a recipe.
+function RecipeHandler.get_uncraftable_items()
+  local items = {} ---@type integer[]
+
+  for item_id in pairs(items_common.get_items()) do
+    if not lookup[item_id] then
+      table.insert(items, item_id)
     end
   end
 
